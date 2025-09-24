@@ -1,271 +1,301 @@
 package btmp
 
-import "math"
-
-// SetRange: grow if needed, set bits, return b.
+// SetRange sets bits in [start, start+count). Auto-grows to fit end.
+// No-op if count == 0. Returns b.
+//
+// Invariant: after return, all bits >= Len() are zero, even when count == 0.
 func (b *Bitmap) SetRange(start, count int) *Bitmap {
+	defer finalize(b)
+	if count < 0 {
+		panic("SetRange: negative count")
+	}
+	if count == 0 {
+		return b
+	}
+	end := checkedEnd(start, count)
+	b.EnsureBits(end)
+
+	// head partial
+	w0, o0 := wordIndex(start)
+	if o0 != 0 {
+		n := min(count, int(64-o0))
+		mask := ^uint64(0) << o0
+		if n < int(64-o0) {
+			mask &= (uint64(1) << (o0 + uint(n))) - 1
+		}
+		b.words[w0] |= mask
+		start += n
+		count -= n
+	}
+
+	// middle full words
+	for count >= 64 {
+		w, _ := wordIndex(start)
+		b.words[w] = ^uint64(0)
+		start += 64
+		count -= 64
+	}
+
+	// tail
+	if count > 0 {
+		w, _ := wordIndex(start)
+		mask := (uint64(1) << uint(count)) - 1
+		b.words[w] |= mask
+	}
+
+	return b
+}
+
+// ClearRange clears bits in [start, start+count). In-bounds only.
+// No-op if count == 0. Returns b.
+//
+// Invariant: after return, all bits >= Len() are zero, even when count == 0.
+func (b *Bitmap) ClearRange(start, count int) *Bitmap {
+	defer finalize(b)
+	if count < 0 {
+		panic("ClearRange: negative count")
+	}
 	if count == 0 {
 		return b
 	}
 	end := checkedEnd(start, count)
 	if end > b.lenBits {
-		ensureLen(b, end)
+		panic("ClearRange: out of bounds")
 	}
-	ws, we := wordSpan(start, count)
-	head, tail, single := partialMasks(start, count)
-	if single {
-		b.words[ws] |= head & tail
-		maskTail(b)
-		return b
+
+	// head partial
+	w0, o0 := wordIndex(start)
+	if o0 != 0 {
+		n := min(count, int(64-o0))
+		mask := ^uint64(0) << o0
+		if n < int(64-o0) {
+			mask &= (uint64(1) << (o0 + uint(n))) - 1
+		}
+		b.words[w0] &^= mask
+		start += n
+		count -= n
 	}
-	b.words[ws] |= head
-	for i := ws + 1; i < we-1; i++ {
-		b.words[i] = ^uint64(0)
+
+	// middle
+	for count >= 64 {
+		w, _ := wordIndex(start)
+		b.words[w] = 0
+		start += 64
+		count -= 64
 	}
-	b.words[we-1] |= tail
-	maskTail(b)
+
+	// tail
+	if count > 0 {
+		w, _ := wordIndex(start)
+		mask := (uint64(1) << uint(count)) - 1
+		b.words[w] &^= mask
+	}
+
 	return b
 }
 
-// ClearRange: in-bounds only, return b.
-func (b *Bitmap) ClearRange(start, count int) *Bitmap {
-	if count == 0 {
-		return b
-	}
-	end := checkedEnd(start, count)
-	if start < 0 || end > b.lenBits {
-		panic("btmp: ClearRange out of bounds")
-	}
-	ws, we := wordSpan(start, count)
-	head, tail, single := partialMasks(start, count)
-	if single {
-		b.words[ws] &^= head & tail
-		maskTail(b)
-		return b
-	}
-	b.words[ws] &^= head
-	for i := ws + 1; i < we-1; i++ {
-		b.words[i] = 0
-	}
-	b.words[we-1] &^= tail
-	maskTail(b)
-	return b
-}
-
-// CopyRange: grow dst if needed, overlap-safe, return b.
+// CopyRange copies count bits from src at srcStart to b at dstStart with memmove semantics.
+// Auto-grows destination to fit. Panics on nil src or out-of-bounds source. Returns b.
+//
+// Overlap rule: if src == b and ranges overlap, the copy behaves like memmove.
+// Direction selection: forward if dstStart < srcStart or non-overlap, else backward.
+//
+// Invariant: after return, all bits >= Len() are zero, even when count == 0.
 func (b *Bitmap) CopyRange(src *Bitmap, srcStart, dstStart, count int) *Bitmap {
+	defer finalize(b)
+	if count < 0 {
+		panic("CopyRange: negative count")
+	}
 	if count == 0 {
 		return b
 	}
 	if src == nil {
-		panic("btmp: CopyRange nil src")
+		panic("CopyRange: nil src")
 	}
 	srcEnd := checkedEnd(srcStart, count)
-	if srcStart < 0 || srcEnd > src.lenBits {
-		panic("btmp: CopyRange source out of bounds")
+	if srcEnd > src.lenBits {
+		panic("CopyRange: source out of bounds")
 	}
+
+	// destination growth
 	dstEnd := checkedEnd(dstStart, count)
-	if dstEnd > b.lenBits {
-		ensureLen(b, dstEnd)
-	}
-	if src == b && rangesOverlap(srcStart, srcEnd, dstStart, dstEnd) {
-		if dstStart < srcStart {
-			copyForward(src, b, srcStart, dstStart, count)
-		} else {
-			copyBackward(src, b, srcStart, dstStart, count)
-		}
-	} else {
+	b.EnsureBits(dstEnd)
+
+	// choose direction considering overlap only when src == dst
+	if src != b {
 		copyForward(src, b, srcStart, dstStart, count)
+		return b
 	}
-	maskTail(b)
+	if dstStart < srcStart || dstStart >= srcStart+count {
+		copyForward(b, b, srcStart, dstStart, count)
+	} else {
+		copyBackward(b, b, srcStart, dstStart, count)
+	}
 	return b
 }
 
-/*** internal bit math and copy engines ***/
+// --- internal helpers for range ops (signatures only) ---
 
+// checkedEnd validates start and count and returns start+count or panics.
 func checkedEnd(start, count int) int {
-	if start < 0 || count < 0 {
-		panic("btmp: negative start or count")
+	if start < 0 {
+		panic("negative start")
+	}
+	if count < 0 {
+		panic("negative count")
 	}
 	end := start + count
-	if end < start || end > math.MaxInt {
-		panic("btmp: start+count overflow")
+	if end < start {
+		panic("overflow")
 	}
 	return end
 }
 
-func wordsFor(bits int) int {
-	if bits <= 0 {
-		return 0
-	}
-	return (bits + 63) >> 6
-}
-
-func wordSpan(start, count int) (ws, we int) {
-	return start >> 6, (start+count+63)>>6
-}
-
-func partialMasks(start, count int) (head, tail uint64, single bool) {
-	sOff := uint(start & 63)
-	end := start + count
-	eOff := uint((end - 1) & 63)
-	head = ^uint64(0) << sOff
-	tail = lowMask(eOff + 1)
-	single = (start>>6 == (end-1)>>6)
-	return
-}
-
-func tailMask(lenBits int) uint64 {
-	r := uint(lenBits & 63)
-	if r == 0 {
-		return ^uint64(0)
-	}
-	return (uint64(1) << r) - 1
-}
-
-func maskTail(b *Bitmap) {
-	if b.lenBits == 0 {
+// copyForward copies left-to-right.
+func copyForward(src, dst *Bitmap, srcStart, dstStart, count int) {
+	// small ranges: scalar
+	if count < 64 {
+		for i := range count {
+			sw, so := wordIndex(srcStart + i)
+			dw, do := wordIndex(dstStart + i)
+			bit := (src.words[sW(sw)]>>so)&1 == 1
+			if bit {
+				dst.words[dw] |= 1 << do
+			} else {
+				dst.words[dw] &^= 1 << do
+			}
+		}
 		return
 	}
-	if (b.lenBits & 63) != 0 {
-		last := wordsFor(b.lenBits) - 1
-		b.words[last] &= tailMask(b.lenBits)
-	}
-}
 
-func lowMask(n uint) uint64 {
-	if n >= 64 {
-		return ^uint64(0)
-	}
-	return (uint64(1) << n) - 1
-}
-
-func rangesOverlap(a0, a1, b0, b1 int) bool {
-	return a0 < b1 && b0 < a1
-}
-
-func copyForward(src, dst *Bitmap, srcStart, dstStart, count int) {
-	// Align dst to next word boundary for middle loop.
-	doff := dstStart & 63
-	if doff != 0 {
-		headBits := min(count, 64-doff)
-		val := readBits(src, srcStart, headBits)
-		writeBits(dst, dstStart, headBits, val)
-		srcStart += headBits
-		dstStart += headBits
-		count -= headBits
-	}
-	// Middle full words.
-	for count >= 64 {
-		wi := srcStart >> 6
-		off := uint(srcStart & 63)
-		var s0, s1 uint64
-		if wi < len(src.words) {
-			s0 = src.words[wi]
-		}
-		if wi+1 < len(src.words) {
-			s1 = src.words[wi+1]
-		}
-		var dw uint64
-		if off == 0 {
-			dw = s0
+	// align destination to word boundary
+	for dstStart&63 != 0 && count > 0 {
+		sw, so := wordIndex(srcStart)
+		dw, do := wordIndex(dstStart)
+		bit := (src.words[sW(sw)]>>so)&1 == 1
+		if bit {
+			dst.words[dw] |= 1 << do
 		} else {
-			dw = (s0 >> off) | (s1 << (64 - off))
+			dst.words[dw] &^= 1 << do
 		}
-		dst.words[dstStart>>6] = dw
+		srcStart++
+		dstStart++
+		count--
+	}
+
+	// word-wise copies
+	for count >= 64 {
+		dw := dstStart >> 6
+		soff := uint(srcStart & 63)
+		sw := srcStart >> 6
+
+		var v uint64
+		if soff == 0 {
+			v = src.words[sW(sw)]
+		} else {
+			lo := src.words[sW(sw)] >> soff
+			hi := uint64(0)
+			if sw+1 < len(src.words) {
+				hi = src.words[sW(sw+1)] << (64 - soff)
+			}
+			v = lo | hi
+		}
+		dst.words[dw] = v
 		srcStart += 64
 		dstStart += 64
 		count -= 64
 	}
-	// Tail.
-	if count > 0 {
-		val := readBits(src, srcStart, count)
-		writeBits(dst, dstStart, count, val)
-	}
-}
 
-func copyBackward(src, dst *Bitmap, srcStart, dstStart, count int) {
-	srcEnd := srcStart + count
-	dstEnd := dstStart + count
-
-	// Align dstEnd to previous word boundary.
-	tbits := dstEnd & 63
-	if tbits != 0 {
-		n := tbits
-		val := readBits(src, srcEnd-n, n)
-		writeBits(dst, dstEnd-n, n, val)
-		srcEnd -= n
-		dstEnd -= n
-		count -= n
-	}
-	for count >= 64 {
-		pos := srcEnd - 64
-		wi := pos >> 6
-		off := uint(pos & 63)
-		var s0, s1 uint64
-		if wi < len(src.words) {
-			s0 = src.words[wi]
-		}
-		if wi+1 < len(src.words) {
-			s1 = src.words[wi+1]
-		}
-		var dw uint64
-		if off == 0 {
-			dw = s0
+	// tail scalar
+	for i := range count {
+		sw, so := wordIndex(srcStart + i)
+		dw, do := wordIndex(dstStart + i)
+		bit := (src.words[sW(sw)]>>so)&1 == 1
+		if bit {
+			dst.words[dw] |= 1 << do
 		} else {
-			dw = (s0 >> off) | (s1 << (64 - off))
+			dst.words[dw] &^= 1 << do
 		}
-		dst.words[(dstEnd-64)>>6] = dw
-		srcEnd -= 64
-		dstEnd -= 64
-		count -= 64
-	}
-	if count > 0 {
-		val := readBits(src, srcStart, count)
-		writeBits(dst, dstStart, count, val)
 	}
 }
 
-func readBits(b *Bitmap, pos, n int) uint64 {
-	wi := pos >> 6
-	off := uint(pos & 63)
-	var s0, s1 uint64
-	if wi < len(b.words) {
-		s0 = b.words[wi]
-	}
-	if wi+1 < len(b.words) {
-		s1 = b.words[wi+1]
-	}
-	if n <= 64-int(off) {
-		return (s0 >> off) & lowMask(uint(n))
-	}
-	x := (s0 >> off) | (s1 << (64 - off))
-	return x & lowMask(uint(n))
-}
-
-func writeBits(b *Bitmap, pos, n int, val uint64) {
-	wi := pos >> 6
-	off := uint(pos & 63)
-
-	if n <= 64-int(off) {
-		mask := lowMask(uint(n)) << off
-		b.words[wi] = (b.words[wi] &^ mask) | ((val << off) & mask)
+// copyBackward copies right-to-left. Must not compute negative intermediate
+// indices. Must handle count < 64 via a scalar path before any word loop.
+func copyBackward(src, dst *Bitmap, srcStart, dstStart, count int) {
+	// small ranges: scalar from end
+	if count < 64 {
+		for i := count - 1; i >= 0; i-- {
+			sw, so := wordIndex(srcStart + i)
+			dw, do := wordIndex(dstStart + i)
+			bit := (src.words[sW(sw)]>>so)&1 == 1
+			if bit {
+				dst.words[dw] |= 1 << do
+			} else {
+				dst.words[dw] &^= 1 << do
+			}
+		}
 		return
 	}
-	first := 64 - int(off)
-	second := n - first
 
-	mask1 := lowMask(uint(first)) << off
-	b.words[wi] = (b.words[wi] &^ mask1) | ((val << off) & mask1)
+	end := dstStart + count
+	srcEnd := srcStart + count
 
-	wi2 := wi + 1
-	mask2 := lowMask(uint(second))
-	b.words[wi2] = (b.words[wi2] &^ mask2) | ((val >> uint(first)) & mask2)
+	// align end down to word boundary using scalar from the end
+	for end&63 != 0 && count > 0 {
+		end--
+		srcEnd--
+		count--
+		sw, so := wordIndex(srcEnd)
+		dw, do := wordIndex(end)
+		bit := (src.words[sW(sw)]>>so)&1 == 1
+		if bit {
+			dst.words[dw] |= 1 << do
+		} else {
+			dst.words[dw] &^= 1 << do
+		}
+	}
+
+	// word-wise downward copies
+	for count >= 64 {
+		dw := (end - 1) >> 6
+		soff := uint(srcEnd & 63)
+		sw := (srcEnd - 1) >> 6
+
+		var v uint64
+		if soff == 0 {
+			v = src.words[sW(sw)]
+		} else {
+			hi := src.words[sW(sw)] << (64 - soff)
+			lo := uint64(0)
+			if sw-1 >= 0 {
+				lo = src.words[sW(sw-1)] >> soff
+			}
+			v = lo | hi
+		}
+		dst.words[dw] = v
+
+		end -= 64
+		srcEnd -= 64
+		count -= 64
+	}
+
+	// head remainder scalar
+	for i := count - 1; i >= 0; i-- {
+		sw, so := wordIndex(srcStart + i)
+		dw, do := wordIndex(dstStart + i)
+		bit := (src.words[sW(sw)]>>so)&1 == 1
+		if bit {
+			dst.words[dw] |= 1 << do
+		} else {
+			dst.words[dw] &^= 1 << do
+		}
+	}
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
+// sW bounds src word index safely for zero-length word slices.
+func sW(i int) int {
+	if i < 0 {
+		return 0
 	}
-	return b
+	return i
 }

@@ -9,49 +9,55 @@ type Grid struct {
 }
 
 // NewGrid returns a Grid with a new underlying Bitmap and the given column count.
-// Accepts cols==0.
+// Accepts cols == 0.
 func NewGrid(cols int) *Grid {
+	if cols < 0 {
+		panic("NewGrid: negative cols")
+	}
 	return &Grid{B: New(), cols: cols}
 }
 
-// NewGridWithCap returns a Grid with a new Bitmap and reserves capacity
-// for rowsCap rows (Len() unchanged). Accepts cols==0 or rowsCap==0.
+// NewGridWithCap returns a Grid with capacity for rowsCap rows.
+// Accepts cols == 0 or rowsCap == 0.
 func NewGridWithCap(cols, rowsCap int) *Grid {
-	return &Grid{B: NewWithCap(cols * rowsCap), cols: cols}
+	if cols < 0 || rowsCap < 0 {
+		panic("NewGridWithCap: negative input")
+	}
+	return &Grid{B: NewWithCap(rowsCap * cols), cols: cols}
 }
 
-// NewGridWithSize returns a Grid with a new Bitmap and sets Len() to rows*cols bits
-// (growing zeroed as needed). Accepts cols==0 or rows==0.
+// NewGridWithSize returns a Grid sized to rows*cols bits.
+// Accepts cols == 0 or rows == 0.
 func NewGridWithSize(cols, rows int) *Grid {
 	if cols < 0 || rows < 0 {
-		panic("btmp: negative cols or rows")
+		panic("NewGridWithSize: negative input")
 	}
 	g := &Grid{B: New(), cols: cols}
-	g.B = g.B.EnsureBits(cols * rows)
+	g.B.EnsureBits(rows * cols)
 	return g
 }
 
-// NewGridFrom wraps an existing Bitmap without allocation. B must not be nil.
+// NewGridFrom wraps an existing Bitmap. Panics if b is nil.
 func NewGridFrom(b *Bitmap, cols int) *Grid {
 	if b == nil {
-		panic("btmp: NewGridFrom nil Bitmap")
+		panic("NewGridFrom: nil bitmap")
+	}
+	if cols < 0 {
+		panic("NewGridFrom: negative cols")
 	}
 	return &Grid{B: b, cols: cols}
 }
 
-// Index returns the linear bit index for (x,y): y*Cols + x.
-// Panics on negative x or y. Does not check against Len().
+// Index returns y*Cols + x. Panics on negative x or y.
 func (g *Grid) Index(x, y int) int {
 	if x < 0 || y < 0 {
-		panic("btmp: Grid.Index negative coordinate")
+		panic("Index: negative")
 	}
 	return y*g.cols + x
 }
 
-// Cols returns the number of columns of the grid.
-func (g *Grid) Cols() int {
-	return g.cols
-}
+// Cols returns the number of columns.
+func (g *Grid) Cols() int { return g.cols }
 
 // Rows reports Len()/Cols. If Cols==0 or Len()==0, Rows==0.
 func (g *Grid) Rows() int {
@@ -62,89 +68,91 @@ func (g *Grid) Rows() int {
 }
 
 // SetRect sets to 1 a rectangle of size w×h at origin (x,y).
-// Auto-grows rows as needed to fit y+h, but does not change Cols.
-// Panics if x<0, y<0, w<0, h<0, or if x+w > Cols.
-// Returns g for chaining.
+// Auto-grows rows to fit y+h. Panics if x<0, y<0, w<0, h<0, or x+w > Cols.
+// Returns g.
+//
+// Invariant: after return, g.B.Len() == g.Rows()*g.Cols() and tail bits are masked.
 func (g *Grid) SetRect(x, y, w, h int) *Grid {
 	if x < 0 || y < 0 || w < 0 || h < 0 {
-		panic("btmp: SetRect negative args")
+		panic("SetRect: negative input")
 	}
-	if w == 0 || h == 0 {
-		return g
-	}
-	if g.cols <= 0 {
-		panic("btmp: SetRect requires Cols > 0")
+	if g.cols == 0 && w > 0 {
+		panic("SetRect: Cols == 0")
 	}
 	if x+w > g.cols {
-		panic("btmp: SetRect exceeds Cols")
+		panic("SetRect: rectangle exceeds columns")
 	}
 	needRows := y + h
-	g.B = g.B.EnsureBits(needRows * g.cols)
-	start := g.Index(x, y)
-	for r := range h {
-		g.B = g.B.SetRange(start+r*g.cols, w)
+	if needRows > g.Rows() {
+		g.B.EnsureBits(needRows * g.cols)
+	}
+	for row := range h {
+		start := (y+row)*g.cols + x
+		g.B.SetRange(start, w)
 	}
 	return g
 }
 
 // ClearRect clears to 0 a rectangle of size w×h at origin (x,y).
-// Panics if any part of the rectangle exceeds current Rows() or Cols().
-// Returns g for chaining.
+// Panics if rectangle exceeds current Rows() or Cols(). Returns g.
+//
+// Invariant: after return, g.B.Len() == g.Rows()*g.Cols() and tail bits are masked.
 func (g *Grid) ClearRect(x, y, w, h int) *Grid {
 	if x < 0 || y < 0 || w < 0 || h < 0 {
-		panic("btmp: ClearRect negative args")
-	}
-	if w == 0 || h == 0 {
-		return g
-	}
-	if g.cols <= 0 {
-		panic("btmp: ClearRect requires Cols > 0")
+		panic("ClearRect: negative input")
 	}
 	if x+w > g.cols {
-		panic("btmp: ClearRect exceeds Cols")
+		panic("ClearRect: rectangle exceeds columns")
 	}
 	if y+h > g.Rows() {
-		panic("btmp: ClearRect exceeds Rows")
+		panic("ClearRect: rectangle exceeds rows")
 	}
-	start := g.Index(x, y)
-	for r := range h {
-		g.B = g.B.ClearRange(start+r*g.cols, w)
+	for row := range h {
+		start := (y+row)*g.cols + x
+		g.B.ClearRange(start, w)
 	}
 	return g
 }
 
-// GrowCols increases Cols by delta (>0) and repositions existing rows so that
-// each cell (x,y) remains at the same coordinates under the new Cols.
-// After return, newly created columns are zero and Len()==Rows()*Cols.
-// Returns g for chaining.
+// GrowCols increases Cols by delta (>0) and repositions existing rows so each
+// cell (x,y) remains at the same coordinates under the new Cols.
+// Newly created columns are zero. Returns g.
+//
+// Invariant: after return, g.B.Len() == g.Rows()*g.Cols() and tail bits are masked.
 func (g *Grid) GrowCols(delta int) *Grid {
 	if delta <= 0 {
-		panic("btmp: GrowCols delta must be > 0")
+		panic("GrowCols: delta must be > 0")
 	}
-	oldC := g.cols
-	newC := oldC + delta
-	if oldC == 0 {
-		g.cols = newC
+	oldCols := g.cols
+	newCols := oldCols + delta
+	rows := g.Rows()
+	if rows == 0 {
+		g.cols = newCols
 		return g
 	}
-	rows := g.Rows()
-	g.B = g.B.EnsureBits(rows * newC)
-	// Bottom-up to avoid overlap.
-	for y := rows - 1; y >= 0; y-- {
-		src := y * oldC
-		dst := y * newC
-		g.B = g.B.CopyRange(g.B, src, dst, oldC)
+	// Resize backing store to new size.
+	g.B.EnsureBits(rows * newCols)
+
+	// Move each row to its new stride from bottom to top to avoid overlap issues.
+	if oldCols > 0 {
+		for r := rows - 1; r >= 0; r-- {
+			srcStart := r * oldCols
+			dstStart := r * newCols
+			g.B.CopyRange(g.B, srcStart, dstStart, oldCols)
+			// New columns are already zero because EnsureBits zero-initializes newly added space.
+		}
 	}
-	g.cols = newC
+	g.cols = newCols
 	return g
 }
 
-// EnsureCols grows Cols to at least cols and performs the same repositioning
-// as GrowCols(cols - Cols) when cols > Cols. No-op if cols <= Cols.
-// Returns g for chaining.
+// EnsureCols grows Cols to at least cols, repositioning like GrowCols when needed.
+// No-op if cols <= Cols. Returns g.
+//
+// Invariant: after return, g.B.Len() == g.Rows()*g.Cols() and tail bits are masked.
 func (g *Grid) EnsureCols(cols int) *Grid {
 	if cols < 0 {
-		panic("btmp: EnsureCols negative")
+		panic("EnsureCols: negative cols")
 	}
 	if cols <= g.cols {
 		return g
@@ -152,37 +160,35 @@ func (g *Grid) EnsureCols(cols int) *Grid {
 	return g.GrowCols(cols - g.cols)
 }
 
-// GrowRows appends delta (>0) empty rows below current content. No repositioning.
-// After return, Len()==Rows()*Cols and new rows are zero. Returns g for chaining.
+// GrowRows appends delta (>0) empty rows below current content. Returns g.
+//
+// Invariant: after return, g.B.Len() == g.Rows()*g.Cols() and tail bits are masked.
 func (g *Grid) GrowRows(delta int) *Grid {
 	if delta <= 0 {
-		panic("btmp: GrowRows delta must be > 0")
-	}
-	if g.cols < 0 {
-		panic("btmp: GrowRows Cols negative")
+		panic("GrowRows: delta must be > 0")
 	}
 	if g.cols == 0 {
+		// No columns, rows are meaningless. Only update length 0.
 		return g
 	}
 	newRows := g.Rows() + delta
-	g.B = g.B.EnsureBits(newRows * g.cols)
+	g.B.EnsureBits(newRows * g.cols)
 	return g
 }
 
-// EnsureRows ensures at least rows rows exist. No repositioning.
-// After return, Len()==Rows()*Cols. No-op if rows <= current Rows().
-// Returns g for chaining.
+// EnsureRows ensures at least rows rows exist. No repositioning. Returns g.
+//
+// Invariant: after return, g.B.Len() == g.Rows()*g.Cols() and tail bits are masked.
 func (g *Grid) EnsureRows(rows int) *Grid {
 	if rows < 0 {
-		panic("btmp: EnsureRows negative")
+		panic("EnsureRows: negative rows")
 	}
 	if g.cols == 0 {
 		return g
 	}
-	cur := g.Rows()
-	if rows <= cur {
+	if rows <= g.Rows() {
 		return g
 	}
-	g.B = g.B.EnsureBits(rows * g.cols)
+	g.B.EnsureBits(rows * g.cols)
 	return g
 }

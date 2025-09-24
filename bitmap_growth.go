@@ -1,85 +1,49 @@
 package btmp
 
-// EnsureBits grows the logical length to at least n bits.
-// Newly added bits are zero. May grow capacity. Never shrinks.
-// No-op if n <= Len(). Panics if n < 0. Returns b for chaining.
+// EnsureBits grows the logical length to at least n bits. Newly added bits are zero.
+// No-op if n <= Len(). Panics if n < 0. Returns b.
+//
+// Invariant: after return, all bits >= Len() are zero.
 func (b *Bitmap) EnsureBits(n int) *Bitmap {
+	defer finalize(b)
 	if n < 0 {
-		panic("btmp: EnsureBits negative")
+		panic("EnsureBits: negative length")
 	}
-	if n > b.lenBits {
-		ensureLen(b, n)
+	if n <= b.lenBits {
+		return b
 	}
+	need := wordsFor(n)
+	if need > len(b.words) {
+		neww := make([]uint64, need)
+		copy(neww, b.words)
+		b.words = neww
+	}
+	b.lenBits = n
 	return b
 }
 
 // ReserveCap ensures capacity for at least n bits without changing Len().
-// Panics if n < 0. Returns b for chaining.
+// Panics if n < 0. Returns b.
 func (b *Bitmap) ReserveCap(n int) *Bitmap {
 	if n < 0 {
-		panic("btmp: ReserveCap negative")
+		panic("ReserveCap: negative")
 	}
-	needW := wordsFor(n)
-	if needW <= cap(b.words) {
-		return b
+	need := wordsFor(n)
+	if need > len(b.words) {
+		neww := make([]uint64, need)
+		copy(neww, b.words)
+		b.words = neww
 	}
-	newCap := growCap(len(b.words), needW)
-	nb := make([]uint64, len(b.words), newCap)
-	copy(nb, b.words)
-	b.words = nb
 	return b
 }
 
 // Trim reslices storage to the minimal number of words that hold Len() bits.
-// Capacity may remain >= length. Tail remains masked. Returns b for chaining.
+// Tail remains masked. Returns b.
 func (b *Bitmap) Trim() *Bitmap {
-	want := wordsFor(b.lenBits)
-	if want < len(b.words) {
-		b.words = b.words[:want]
+	defer finalize(b)
+	need := wordsFor(b.lenBits)
+	if need < len(b.words) {
+		b.words = b.words[:need]
 	}
 	return b
-}
-
-/*** internal growth ***/
-
-const (
-	growMinWords     = 8
-	growSoftCapWords = 1 << 20 // words; ~8 MiB of uint64s
-)
-
-func ensureLen(b *Bitmap, needBits int) {
-	needW := wordsFor(needBits)
-	oldW := len(b.words)
-	if needW > oldW {
-		if needW <= cap(b.words) {
-			old := b.words
-			b.words = old[:needW]
-			for i := oldW; i < needW; i++ {
-				b.words[i] = 0
-			}
-		} else {
-			newCap := growCap(oldW, needW)
-			nb := make([]uint64, needW, newCap)
-			copy(nb, b.words)
-			b.words = nb
-		}
-	}
-	b.lenBits = needBits
-	maskTail(b)
-}
-
-func growCap(cur, need int) int {
-	if cur < 0 {
-		cur = 0
-	}
-	var inc int
-	if cur >= growSoftCapWords {
-		inc = cur / 5 // ~1.2x
-	} else {
-		inc = cur / 2 // ~1.5x
-	}
-	if inc < growMinWords {
-		inc = growMinWords
-	}
-	return max(cur+inc, need)
 }
