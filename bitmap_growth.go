@@ -12,11 +12,11 @@ func (b *Bitmap) EnsureBits(n int) *Bitmap {
 	if n <= b.lenBits {
 		return b
 	}
-	need := wordsFor(n)
+	need := int((n + wordMask) >> wordShift)
 	if need > len(b.words) {
-		neww := make([]uint64, need)
-		copy(neww, b.words)
-		b.words = neww
+		ws := make([]uint64, need)
+		copy(ws, b.words)
+		b.words = ws
 	}
 	b.lenBits = n
 	return b
@@ -28,11 +28,11 @@ func (b *Bitmap) ReserveCap(n int) *Bitmap {
 	if n < 0 {
 		panic("ReserveCap: negative")
 	}
-	need := wordsFor(n)
+	need := int((n + wordMask) >> wordShift)
 	if need > len(b.words) {
-		neww := make([]uint64, need)
-		copy(neww, b.words)
-		b.words = neww
+		ws := make([]uint64, need)
+		copy(ws, b.words)
+		b.words = ws
 	}
 	return b
 }
@@ -41,7 +41,7 @@ func (b *Bitmap) ReserveCap(n int) *Bitmap {
 // Tail remains masked. Returns b.
 func (b *Bitmap) Trim() *Bitmap {
 	defer finalize(b)
-	need := wordsFor(b.lenBits)
+	need := int((b.lenBits + wordMask) >> wordShift)
 	if need < len(b.words) {
 		b.words = b.words[:need]
 	}

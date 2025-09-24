@@ -134,7 +134,7 @@ func (b *Bitmap) CopyRange(src *Bitmap, srcStart, dstStart, count int) *Bitmap {
 	return b
 }
 
-// --- internal helpers for range ops (signatures only) ---
+// --- internal helpers for range ops ---
 
 // checkedEnd validates start and count and returns start+count or panics.
 func checkedEnd(start, count int) int {
