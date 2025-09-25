@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	btmp "github.com/neox5/btmp"
+	"github.com/neox5/btmp"
 )
 
 /*************************
@@ -285,6 +285,259 @@ func TestNextSetBit_And_Count(t *testing.T) {
 	}
 }
 
+func TestAny(t *testing.T) {
+	t.Parallel()
+
+	// Empty bitmap
+	b := btmp.New(0)
+	if b.Any() {
+		t.Fatal("empty bitmap should return false for Any()")
+	}
+
+	// Zero-length bitmap
+	b = btmp.New(64)
+	if b.Any() {
+		t.Fatal("zero bitmap should return false for Any()")
+	}
+
+	// Set single bit
+	b = b.SetRange(32, 1)
+	if !b.Any() {
+		t.Fatal("bitmap with set bit should return true for Any()")
+	}
+
+	// Clear all bits
+	b = b.ClearRange(32, 1)
+	if b.Any() {
+		t.Fatal("cleared bitmap should return false for Any()")
+	}
+
+	// Multiple words, set bit in middle word
+	b = btmp.New(192)
+	b = b.SetRange(128, 1)
+	if !b.Any() {
+		t.Fatal("bitmap with middle word set should return true for Any()")
+	}
+
+	// Set bit in last word
+	b = btmp.New(192)
+	b = b.SetRange(191, 1)
+	if !b.Any() {
+		t.Fatal("bitmap with last bit set should return true for Any()")
+	}
+}
+
+func TestAny_EarlyReturn(t *testing.T) {
+	t.Parallel()
+
+	// Create bitmap with bit set in first word (covers line 73)
+	b := btmp.New(128)
+	b = b.SetRange(0, 1) // Set first bit
+
+	// This should return true immediately without checking other words
+	if !b.Any() {
+		t.Fatal("Any() should return true for bit in first word")
+	}
+}
+
+func TestCount_Empty(t *testing.T) {
+	t.Parallel()
+
+	// Empty bitmap (covers line 83)
+	b := btmp.New(0)
+	if b.Count() != 0 {
+		t.Fatalf("Count() on empty bitmap should return 0, got %d", b.Count())
+	}
+}
+
+func TestNextSetBit_EdgeCases(t *testing.T) {
+	t.Parallel()
+
+	// Empty bitmap
+	b := btmp.New(0)
+	if got := b.NextSetBit(0); got != -1 {
+		t.Fatalf("NextSetBit on empty should return -1, got %d", got)
+	}
+
+	// No set bits
+	b = btmp.New(128)
+	if got := b.NextSetBit(0); got != -1 {
+		t.Fatalf("NextSetBit on zero bitmap should return -1, got %d", got)
+	}
+
+	// From equals Len()
+	b = b.SetRange(64, 1)
+	if got := b.NextSetBit(b.Len()); got != -1 {
+		t.Fatalf("NextSetBit(Len()) should return -1, got %d", got)
+	}
+
+	// Multiple words, bit in last word
+	b = btmp.New(192)
+	b = b.SetRange(191, 1)
+	if got := b.NextSetBit(0); got != 191 {
+		t.Fatalf("NextSetBit should find bit in last word, got %d want 191", got)
+	}
+
+	// Search from middle of word
+	b = btmp.New(128)
+	b = b.SetRange(100, 1)
+	if got := b.NextSetBit(90); got != 100 {
+		t.Fatalf("NextSetBit from middle should find bit, got %d want 100", got)
+	}
+}
+
+func TestGrowthMethods(t *testing.T) {
+	t.Parallel()
+
+	// ReserveCap capacity growth
+	b := btmp.New(0)
+	initialCap := cap(b.Words())
+	b = b.ReserveCap(1024) // Force capacity growth
+	newCap := cap(b.Words())
+	if newCap <= initialCap {
+		t.Fatal("ReserveCap should increase capacity")
+	}
+	if b.Len() != 0 {
+		t.Fatalf("ReserveCap should not change length, got %d", b.Len())
+	}
+
+	// ReserveCap no-op when sufficient capacity
+	b = btmp.New(64)
+	beforeCap := cap(b.Words())
+	b = b.ReserveCap(32) // Less than current need
+	afterCap := cap(b.Words())
+	if afterCap != beforeCap {
+		t.Fatal("ReserveCap should be no-op when capacity sufficient")
+	}
+
+	// Truncate - ensure it sets words slice to minimum needed length
+	b = btmp.New(1024) // 1024 bits = 16 words
+	b = b.Truncate()   // Should keep 16 words since we need them all
+	if len(b.Words()) != 16 {
+		t.Fatalf("Truncate should keep necessary words, got %d want 16", len(b.Words()))
+	}
+
+	// Test with a case where we might have excess (though EnsureBits doesn't create excess)
+	b = btmp.New(127) // 127 bits = 2 words needed
+	b = b.Truncate()
+	expectedLen := (127 + 63) / 64 // ceil(127/64) = 2
+	if len(b.Words()) != expectedLen {
+		t.Fatalf("Truncate should have %d words for 127 bits, got %d", expectedLen, len(b.Words()))
+	}
+
+	// Clip
+	b = btmp.New(64)
+	b = b.ReserveCap(1024) // Create excess capacity
+	oldCap := cap(b.Words())
+	b = b.Clip()
+	newCap = cap(b.Words())
+	if newCap >= oldCap {
+		t.Fatal("Clip should reduce capacity")
+	}
+	// Ensure data integrity after clip
+	b = b.SetRange(32, 16)
+	for i := range 16 {
+		if !b.Test(32 + i) {
+			t.Fatalf("bit %d should be set after clip", 32+i)
+		}
+	}
+}
+
+func TestTruncate_ActualTruncation(t *testing.T) {
+	t.Parallel()
+
+	// Note: The condition need < len(b.words) in Truncate (line 51)
+	// may not be reachable through the public API since all mutators
+	// call finalize() which keeps the words slice properly sized.
+	// This test verifies Truncate works correctly when called.
+
+	b := btmp.New(256) // 4 words
+	initialLen := len(b.Words())
+	initialCap := cap(b.Words())
+
+	// Truncate should be a no-op when already properly sized
+	b = b.Truncate()
+
+	if len(b.Words()) != initialLen {
+		t.Fatalf("Truncate changed length when already correct: before=%d after=%d",
+			initialLen, len(b.Words()))
+	}
+
+	if cap(b.Words()) != initialCap {
+		t.Fatalf("Truncate should never change capacity: before=%d after=%d",
+			initialCap, cap(b.Words()))
+	}
+}
+
+func TestExtractWord_Boundary(t *testing.T) {
+	t.Parallel()
+
+	// Test extractWord boundary case via CopyRange
+	b1 := btmp.New(128)
+	b1 = b1.SetRange(120, 8) // Set bits near end
+
+	b2 := btmp.New(0)
+	// This should trigger extractWord boundary case where sw+1 >= len(src.words)
+	b2 = b2.CopyRange(b1, 120, 0, 8)
+
+	// Verify copy worked correctly
+	for i := range 8 {
+		if !b2.Test(i) {
+			t.Fatalf("bit %d should be set after boundary copy", i)
+		}
+	}
+
+	// Test boundary with exact word boundary
+	b3 := btmp.New(64)
+	b3 = b3.SetRange(60, 4)
+	b4 := btmp.New(0)
+	b4 = b4.CopyRange(b3, 60, 0, 4)
+
+	for i := range 4 {
+		if !b4.Test(i) {
+			t.Fatalf("bit %d should be set after word boundary copy", i)
+		}
+	}
+}
+
+func TestExtractWord_CompletelyOutOfBounds(t *testing.T) {
+	t.Parallel()
+
+	// This test covers line 160 where extractWord returns 0 for out of bounds
+
+	// Create small bitmap
+	b1 := btmp.New(64)
+	b1 = b1.SetRange(0, 64)
+
+	b2 := btmp.New(0)
+	// Copy from position that would make sw >= len(src.words)
+	// Using count=0 to avoid panic, but still test the path
+	b2 = b2.CopyRange(b1, 64, 0, 0)
+
+	// Also test with actual copy from near boundary
+	b3 := btmp.New(128)
+	b3 = b3.SetRange(0, 64) // Only first 64 bits set
+	b4 := btmp.New(0)
+	// Copy from position 120 (which is in second word that's all zeros)
+	b4 = b4.CopyRange(b3, 120, 0, 8)
+
+	// Verify no bits set (since source was all zeros in that range)
+	if b4.Count() != 0 {
+		t.Fatal("Should have no bits set when copying zeros from second word")
+	}
+
+	// Test copying from exactly at the boundary
+	b5 := btmp.New(64)
+	b5 = b5.SetRange(63, 1) // Set last bit of first word
+	b6 := btmp.New(0)
+	// This tests the boundary condition in extractWord
+	b6 = b6.CopyRange(b5, 63, 0, 1)
+
+	if !b6.Test(0) {
+		t.Fatal("Should have copied the bit at boundary")
+	}
+}
+
 func TestWordsExposure_TailMask(t *testing.T) {
 	t.Parallel()
 	b := btmp.New(130) // needWords = 3
@@ -317,20 +570,44 @@ func TestPanicCases(t *testing.T) {
 	t.Parallel()
 	b := btmp.New(100)
 
-	// Clear OOB
-	mustPanic(t, func() { _ = b.ClearRange(90, 20) })
-	// Negative args
+	// EnsureBits negative length
+	mustPanic(t, func() { _ = b.EnsureBits(-1) })
+
+	// ReserveCap negative
+	mustPanic(t, func() { _ = b.ReserveCap(-1) })
+
+	// SetRange negative start
 	mustPanic(t, func() { _ = b.SetRange(-1, 1) })
+	// SetRange negative count
 	mustPanic(t, func() { _ = b.SetRange(1, -1) })
+
+	// ClearRange negative start (implicit in checkedEnd)
 	mustPanic(t, func() { _ = b.ClearRange(-1, 1) })
+	// ClearRange negative count
+	mustPanic(t, func() { _ = b.ClearRange(1, -1) })
+	// ClearRange out of bounds
+	mustPanic(t, func() { _ = b.ClearRange(90, 20) })
+
+	// CopyRange negative start (implicit in checkedEnd)
 	mustPanic(t, func() { _ = b.CopyRange(b, -1, 0, 1) })
-	// Overflow
+	// CopyRange negative count (this covers line 135 in checkedEnd)
+	mustPanic(t, func() { _ = b.CopyRange(b, 0, 0, -1) })
+	// CopyRange nil src
+	mustPanic(t, func() { _ = b.CopyRange(nil, 0, 0, 1) })
+	// CopyRange source out of bounds
+	mustPanic(t, func() { _ = b.CopyRange(b, 90, 0, 20) })
+
+	// Overflow cases
 	mustPanic(t, func() { _ = b.SetRange(math.MaxInt-10, 20) })
-	// Test/NextSetBit OOB
+	mustPanic(t, func() { _ = b.ClearRange(math.MaxInt-10, 20) })
+	mustPanic(t, func() { _ = b.CopyRange(b, math.MaxInt-10, 0, 20) })
+	mustPanic(t, func() { _ = b.CopyRange(b, 0, math.MaxInt-10, 20) })
+
+	// Test out of bounds
 	mustPanic(t, func() { _ = b.Test(-1) })
 	mustPanic(t, func() { _ = b.Test(100) })
+
+	// NextSetBit out of bounds
 	mustPanic(t, func() { _ = b.NextSetBit(-1) })
 	mustPanic(t, func() { _ = b.NextSetBit(101) })
-	// Copy nil src
-	mustPanic(t, func() { _ = b.CopyRange(nil, 0, 0, 1) })
 }

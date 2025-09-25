@@ -1,9 +1,10 @@
 package btmp_test
 
 import (
+	"math"
 	"testing"
 
-	btmp "github.com/neox5/btmp"
+	"github.com/neox5/btmp"
 )
 
 // bitAt reads bit i via public API.
@@ -144,36 +145,257 @@ func TestGrid_GrowEnsureRows(t *testing.T) {
 	}
 }
 
+func TestGrid_ZeroColsEdgeCases(t *testing.T) {
+	t.Parallel()
+
+	// Zero cols with GrowRows
+	g := btmp.NewGrid(0)
+	g = g.GrowRows(5) // Should be no-op
+	if g.Rows() != 0 || g.B.Len() != 0 {
+		t.Fatalf("GrowRows with zero cols should be no-op")
+	}
+
+	// Zero cols with EnsureRows
+	g = g.EnsureRows(10) // Should be no-op
+	if g.Rows() != 0 || g.B.Len() != 0 {
+		t.Fatalf("EnsureRows with zero cols should be no-op")
+	}
+}
+
+func TestSetRect_AutoGrow(t *testing.T) {
+	t.Parallel()
+
+	// Test auto-grow when rectangle exceeds current rows
+	g := btmp.NewGrid(10)
+	// Initially 0 rows
+	if g.Rows() != 0 {
+		t.Fatalf("new grid should have 0 rows, got %d", g.Rows())
+	}
+
+	// SetRect that requires growing to y+h rows
+	g = g.SetRect(2, 5, 3, 4) // Rectangle at (2,5) with size 3x4
+	expectedRows := 5 + 4     // y + h = 9
+	if g.Rows() != expectedRows {
+		t.Fatalf("SetRect should auto-grow to %d rows, got %d", expectedRows, g.Rows())
+	}
+
+	// Verify the rectangle was set correctly
+	for y := 5; y < 9; y++ {
+		for x := 2; x < 5; x++ {
+			if !bitAt(g.B, g.Index(x, y)) {
+				t.Fatalf("bit should be set at (%d,%d)", x, y)
+			}
+		}
+	}
+
+	// Test growing from existing rows
+	g = g.SetRect(0, 10, 5, 2) // Extend beyond current 9 rows
+	expectedRows = 10 + 2      // y + h = 12
+	if g.Rows() != expectedRows {
+		t.Fatalf("SetRect should auto-grow to %d rows, got %d", expectedRows, g.Rows())
+	}
+}
+
+func TestGrowRows_ZeroCols(t *testing.T) {
+	t.Parallel()
+
+	// Test GrowRows with zero columns
+	g := btmp.NewGrid(0) // Zero columns
+	if g.Cols() != 0 {
+		t.Fatalf("expected 0 cols, got %d", g.Cols())
+	}
+	if g.Rows() != 0 {
+		t.Fatalf("expected 0 rows, got %d", g.Rows())
+	}
+
+	// GrowRows should be no-op when cols == 0
+	g = g.GrowRows(5)
+	if g.Rows() != 0 {
+		t.Fatalf("GrowRows with zero cols should be no-op, got %d rows", g.Rows())
+	}
+	if g.B.Len() != 0 {
+		t.Fatalf("bitmap length should remain 0, got %d", g.B.Len())
+	}
+
+	// Multiple GrowRows calls
+	g = g.GrowRows(10)
+	if g.Rows() != 0 {
+		t.Fatalf("multiple GrowRows with zero cols should be no-op, got %d rows", g.Rows())
+	}
+}
+
+func TestEnsureRows_ZeroCols(t *testing.T) {
+	t.Parallel()
+
+	// Test EnsureRows with zero columns
+	g := btmp.NewGrid(0) // Zero columns
+	if g.Cols() != 0 {
+		t.Fatalf("expected 0 cols, got %d", g.Cols())
+	}
+
+	// EnsureRows should be no-op when cols == 0
+	g = g.EnsureRows(5)
+	if g.Rows() != 0 {
+		t.Fatalf("EnsureRows with zero cols should be no-op, got %d rows", g.Rows())
+	}
+	if g.B.Len() != 0 {
+		t.Fatalf("bitmap length should remain 0, got %d", g.B.Len())
+	}
+
+	// EnsureRows with larger value
+	g = g.EnsureRows(100)
+	if g.Rows() != 0 {
+		t.Fatalf("EnsureRows with zero cols should be no-op, got %d rows", g.Rows())
+	}
+	if g.B.Len() != 0 {
+		t.Fatalf("bitmap length should remain 0, got %d", g.B.Len())
+	}
+
+	// EnsureRows no-op (requesting fewer rows than current)
+	g = g.EnsureRows(0)
+	if g.Rows() != 0 {
+		t.Fatalf("EnsureRows(0) should be no-op, got %d rows", g.Rows())
+	}
+}
+
+func TestGrid_ZeroColsComprehensive(t *testing.T) {
+	t.Parallel()
+
+	// Comprehensive test of zero-column grid behavior
+	g := btmp.NewGrid(0)
+
+	// All row operations should be no-ops
+	g = g.GrowRows(1)
+	g = g.EnsureRows(10)
+	g = g.GrowRows(5)
+
+	if g.Rows() != 0 {
+		t.Fatalf("all row operations on zero-col grid should be no-ops, got %d rows", g.Rows())
+	}
+	if g.Cols() != 0 {
+		t.Fatalf("columns should remain 0, got %d", g.Cols())
+	}
+	if g.B.Len() != 0 {
+		t.Fatalf("bitmap length should remain 0, got %d", g.B.Len())
+	}
+
+	// Verify grid remains in consistent state
+	if g.Rows() != 0 || g.Cols() != 0 {
+		t.Fatal("zero-col grid should maintain zero rows and cols")
+	}
+}
+
+func TestGrowCols_EmptyGrid(t *testing.T) {
+	t.Parallel()
+
+	// Test GrowCols when rows == 0 (covers line 140)
+	g := btmp.NewGrid(5)
+	// No rows initially
+	if g.Rows() != 0 {
+		t.Fatalf("expected 0 rows, got %d", g.Rows())
+	}
+
+	// GrowCols should just update cols when rows == 0
+	g = g.GrowCols(3)
+	if g.Cols() != 8 {
+		t.Fatalf("expected 8 cols after grow, got %d", g.Cols())
+	}
+	if g.Rows() != 0 {
+		t.Fatalf("expected 0 rows still, got %d", g.Rows())
+	}
+}
+
+func TestEnsureCols(t *testing.T) {
+	t.Parallel()
+
+	// Test panic on negative cols (covers line 169)
+	g := btmp.NewGrid(10)
+	mustPanic(t, func() { _ = g.EnsureCols(-1) })
+
+	// Test no-op when cols <= current (covers lines 171-173)
+	g = g.SetRect(0, 0, 10, 5) // Create 5 rows
+	originalBits := g.B.Count()
+
+	// EnsureCols with same amount - should be no-op
+	g = g.EnsureCols(10)
+	if g.Cols() != 10 {
+		t.Fatalf("EnsureCols(10) should keep 10 cols, got %d", g.Cols())
+	}
+	if g.B.Count() != originalBits {
+		t.Fatal("EnsureCols no-op should not change bits")
+	}
+
+	// EnsureCols with less - should be no-op
+	g = g.EnsureCols(5)
+	if g.Cols() != 10 {
+		t.Fatalf("EnsureCols(5) should keep 10 cols, got %d", g.Cols())
+	}
+
+	// EnsureCols with more - should call GrowCols (covers line 174)
+	g = g.EnsureCols(15)
+	if g.Cols() != 15 {
+		t.Fatalf("EnsureCols(15) should result in 15 cols, got %d", g.Cols())
+	}
+
+	// Verify data preserved after growth
+	for y := range 5 {
+		for x := range 10 {
+			if !g.B.Test(g.Index(x, y)) {
+				t.Fatalf("lost bit at (%d,%d) after EnsureCols", x, y)
+			}
+		}
+	}
+}
+
 func TestGrid_Panics(t *testing.T) {
 	t.Parallel()
 
-	// NewGridFrom nil
+	// Constructor panics
+	mustPanic(t, func() { _ = btmp.NewGrid(-1) })
+	mustPanic(t, func() { _ = btmp.NewGridWithCap(-1, 0) })
+	mustPanic(t, func() { _ = btmp.NewGridWithCap(0, -1) })
+	mustPanic(t, func() { _ = btmp.NewGridWithCap(math.MaxInt/2, math.MaxInt/2+1) }) // overflow
+	mustPanic(t, func() { _ = btmp.NewGridWithSize(-1, 0) })
+	mustPanic(t, func() { _ = btmp.NewGridWithSize(0, -1) })
+	mustPanic(t, func() { _ = btmp.NewGridWithSize(math.MaxInt/2, math.MaxInt/2+1) }) // overflow
 	mustPanic(t, func() { _ = btmp.NewGridFrom(nil, 8) })
+	mustPanic(t, func() { _ = btmp.NewGridFrom(btmp.New(0), -1) })
 
 	g := btmp.NewGrid(8)
 
-	// Negative args
+	// Index panics
+	mustPanic(t, func() { _ = g.Index(-1, 0) })
+	mustPanic(t, func() { _ = g.Index(0, -1) })
+
+	// SetRect panics
 	mustPanic(t, func() { _ = g.SetRect(-1, 0, 1, 1) })
 	mustPanic(t, func() { _ = g.SetRect(0, -1, 1, 1) })
+	mustPanic(t, func() { _ = g.SetRect(0, 0, -1, 1) })
+	mustPanic(t, func() { _ = g.SetRect(0, 0, 1, -1) })
+	mustPanic(t, func() { _ = g.SetRect(7, 0, 2, 1) }) // x+w > cols
+
+	// SetRect with zero cols
+	gZero := btmp.NewGrid(0)
+	mustPanic(t, func() { _ = gZero.SetRect(0, 0, 1, 1) }) // cols == 0 and w > 0
+
+	// ClearRect panics
 	mustPanic(t, func() { _ = g.ClearRect(-1, 0, 1, 1) })
+	mustPanic(t, func() { _ = g.ClearRect(0, -1, 1, 1) })
+	mustPanic(t, func() { _ = g.ClearRect(0, 0, -1, 1) })
+	mustPanic(t, func() { _ = g.ClearRect(0, 0, 1, -1) })
+	mustPanic(t, func() { _ = g.ClearRect(7, 0, 2, 1) }) // x+w > cols
 
-	// Exceed cols
-	mustPanic(t, func() { _ = g.SetRect(7, 0, 2, 1) })
-	mustPanic(t, func() { _ = g.ClearRect(7, 0, 2, 1) })
-
-	// Clear beyond rows
+	// ClearRect beyond current rows
 	g = g.GrowRows(2)
-	mustPanic(t, func() { _ = g.ClearRect(0, 1, 8, 2) })
+	mustPanic(t, func() { _ = g.ClearRect(0, 1, 8, 2) }) // y+h > rows
 
-	// GrowCols invalid
+	// GrowCols/EnsureCols panics
 	mustPanic(t, func() { _ = g.GrowCols(0) })
-
-	// EnsureCols negative
+	mustPanic(t, func() { _ = g.GrowCols(-1) })
 	mustPanic(t, func() { _ = g.EnsureCols(-1) })
 
-	// GrowRows invalid
+	// GrowRows/EnsureRows panics
 	mustPanic(t, func() { _ = g.GrowRows(0) })
-
-	// EnsureRows negative
+	mustPanic(t, func() { _ = g.GrowRows(-1) })
 	mustPanic(t, func() { _ = g.EnsureRows(-1) })
 }
