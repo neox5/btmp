@@ -147,7 +147,13 @@ func (g *Grid) GrowCols(delta int) *Grid {
 			srcStart := r * oldCols
 			dstStart := r * newCols
 			g.B.CopyRange(g.B, srcStart, dstStart, oldCols)
-			// New columns are already zero because EnsureBits zero-initializes newly added space.
+
+			// Clear any old data that now falls within another row's space
+			clearStart := srcStart
+			clearEnd := dstStart
+			if clearStart < clearEnd {
+				g.B.ClearRange(clearStart, clearEnd-clearStart)
+			}
 		}
 	}
 	g.cols = newCols
