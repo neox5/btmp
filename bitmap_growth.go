@@ -1,22 +1,26 @@
 package btmp
 
+import "slices"
+
 // EnsureBits grows the logical length to at least n bits. Newly added bits are zero.
 // No-op if n <= Len(). Panics if n < 0. Returns b.
 //
 // Invariant: after return, all bits >= Len() are zero.
 func (b *Bitmap) EnsureBits(n int) *Bitmap {
-	defer finalize(b)
+	defer b.finalize()
 	if n < 0 {
 		panic("EnsureBits: negative length")
 	}
 	if n <= b.lenBits {
 		return b
 	}
-	need := int((n + wordMask) >> wordShift)
+	need := int((n + indexMask) >> wordShift)
+
 	if need > len(b.words) {
-		ws := make([]uint64, need)
-		copy(ws, b.words)
-		b.words = ws
+		old := len(b.words)
+		// Ensure capacity >= need, then reslice (set to new len) and zero the new words.
+		b.words = slices.Grow(b.words, need-old)[:need]
+		clear(b.words[old:]) // zeros new words
 	}
 	b.lenBits = n
 	return b
@@ -25,25 +29,32 @@ func (b *Bitmap) EnsureBits(n int) *Bitmap {
 // ReserveCap ensures capacity for at least n bits without changing Len().
 // Panics if n < 0. Returns b.
 func (b *Bitmap) ReserveCap(n int) *Bitmap {
+	defer b.finalize()
 	if n < 0 {
 		panic("ReserveCap: negative")
 	}
-	need := int((n + wordMask) >> wordShift)
-	if need > len(b.words) {
-		ws := make([]uint64, need)
-		copy(ws, b.words)
-		b.words = ws
+	needWords := int((n + indexMask) >> wordShift)
+	if needWords > cap(b.words) {
+		// Grow capacity to at least needWords; length stays the same.
+		b.words = slices.Grow(b.words, needWords-cap(b.words))
 	}
 	return b
 }
 
-// Trim reslices storage to the minimal number of words that hold Len() bits.
-// Tail remains masked. Returns b.
-func (b *Bitmap) Trim() *Bitmap {
-	defer finalize(b)
-	need := int((b.lenBits + wordMask) >> wordShift)
+// Truncate reslices storage to the minimal number of words for Len().
+// Capacity unchanged.
+func (b *Bitmap) Truncate() *Bitmap {
+	defer b.finalize()
+	need := int((b.lenBits + indexMask) >> wordShift)
 	if need < len(b.words) {
 		b.words = b.words[:need]
 	}
+	return b
+}
+
+// Clip drops excess capacity after Truncate.
+func (b *Bitmap) Clip() *Bitmap {
+	defer b.finalize()
+	b.words = slices.Clip(b.words)
 	return b
 }

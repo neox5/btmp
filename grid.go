@@ -14,7 +14,7 @@ func NewGrid(cols int) *Grid {
 	if cols < 0 {
 		panic("NewGrid: negative cols")
 	}
-	return &Grid{B: New(), cols: cols}
+	return &Grid{B: New(0), cols: cols}
 }
 
 // NewGridWithCap returns a Grid with capacity for rowsCap rows.
@@ -23,7 +23,13 @@ func NewGridWithCap(cols, rowsCap int) *Grid {
 	if cols < 0 || rowsCap < 0 {
 		panic("NewGridWithCap: negative input")
 	}
-	return &Grid{B: NewWithCap(rowsCap * cols), cols: cols}
+	cap := rowsCap * cols
+	if cap < 0 {
+		panic("NewGridWithCap: overflow")
+	}
+	b := New(0)
+	b.ReserveCap(cap)
+	return &Grid{B: b, cols: cols}
 }
 
 // NewGridWithSize returns a Grid sized to rows*cols bits.
@@ -32,9 +38,11 @@ func NewGridWithSize(cols, rows int) *Grid {
 	if cols < 0 || rows < 0 {
 		panic("NewGridWithSize: negative input")
 	}
-	g := &Grid{B: New(), cols: cols}
-	g.B.EnsureBits(rows * cols)
-	return g
+	size := rows * cols
+	if size < 0 {
+		panic("NewGridWithSize: overflow")
+	}
+	return &Grid{B: New(uint(size)), cols: cols}
 }
 
 // NewGridFrom wraps an existing Bitmap. Panics if b is nil.

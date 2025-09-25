@@ -21,7 +21,7 @@ func TestGrid_ConstructorsAndRows(t *testing.T) {
 	}
 
 	g = btmp.NewGridWithCap(8, 10)
-	if g.Cols()!= 8 {
+	if g.Cols() != 8 {
 		t.Fatalf("Cols=%d want=8", g.Cols())
 	}
 	if g.Rows() != 0 || g.B.Len() != 0 {
@@ -33,7 +33,7 @@ func TestGrid_ConstructorsAndRows(t *testing.T) {
 		t.Fatalf("size ctor mismatch: Cols=%d Rows=%d Len=%d", g.Cols(), g.Rows(), g.B.Len())
 	}
 
-	base := btmp.New().EnsureBits(24)
+	base := btmp.New(24)
 	g = btmp.NewGridFrom(base, 6)
 	if g.Cols() != 6 || g.Rows() != 4 {
 		t.Fatalf("from mismatch: Cols=%d Rows=%d", g.Cols(), g.Rows())

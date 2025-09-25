@@ -175,7 +175,7 @@ func TestSetClear_BasicAndBoundaries(t *testing.T) {
 		{130, 64, 64, true}, // two full words
 	}
 	for _, tc := range cases {
-		b := btmp.New()
+		b := btmp.New(0)
 		if tc.preLen > 0 {
 			b = b.EnsureBits(tc.preLen)
 		}
@@ -199,7 +199,7 @@ func TestCopyRange_Variants(t *testing.T) {
 
 	// Aligned large copy.
 	{
-		b := btmp.New().EnsureBits(4096)
+		b := btmp.New(0).EnsureBits(4096)
 		r := newRef(4096)
 		b = b.SetRange(64, 1024)
 		r.setRange(64, 1024)
@@ -212,7 +212,7 @@ func TestCopyRange_Variants(t *testing.T) {
 
 	// Misaligned copy.
 	{
-		b := btmp.New().EnsureBits(3000)
+		b := btmp.New(0).EnsureBits(3000)
 		r := newRef(3000)
 		b = b.SetRange(3, 200).SetRange(777, 129).SetRange(1999, 1)
 		r.setRange(3, 200)
@@ -227,7 +227,7 @@ func TestCopyRange_Variants(t *testing.T) {
 
 	// Overlap forward (dst<src).
 	{
-		b := btmp.New().EnsureBits(2048)
+		b := btmp.New(0).EnsureBits(2048)
 		r := newRef(2048)
 		b = b.SetRange(100, 300)
 		r.setRange(100, 300)
@@ -240,7 +240,7 @@ func TestCopyRange_Variants(t *testing.T) {
 
 	// Overlap backward (dst>src).
 	{
-		b := btmp.New().EnsureBits(2048)
+		b := btmp.New(0).EnsureBits(2048)
 		r := newRef(2048)
 		b = b.SetRange(200, 400)
 		r.setRange(200, 400)
@@ -254,7 +254,7 @@ func TestCopyRange_Variants(t *testing.T) {
 
 func TestNextSetBit_And_Count(t *testing.T) {
 	t.Parallel()
-	b := btmp.New()
+	b := btmp.New(0)
 	r := newRef(0)
 
 	sets := [][2]int{{2, 1}, {5, 3}, {130, 2}, {512, 200}, {1023, 2}}
@@ -287,7 +287,7 @@ func TestNextSetBit_And_Count(t *testing.T) {
 
 func TestWordsExposure_TailMask(t *testing.T) {
 	t.Parallel()
-	b := btmp.New().EnsureBits(130) // needWords = 3
+	b := btmp.New(130) // needWords = 3
 	w := b.Words()
 	if len(w) != 3 {
 		t.Fatalf("unexpected words len: got=%d want=3", len(w))
@@ -315,7 +315,7 @@ func TestWordsExposure_TailMask(t *testing.T) {
 
 func TestPanicCases(t *testing.T) {
 	t.Parallel()
-	b := btmp.New().EnsureBits(100)
+	b := btmp.New(100)
 
 	// Clear OOB
 	mustPanic(t, func() { _ = b.ClearRange(90, 20) })

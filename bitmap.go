@@ -3,45 +3,48 @@ package btmp
 import "math/bits"
 
 const (
-	wordMask  = 64 - 1 // mask 0b111111
-	wordShift = 6      // log2(64), used for division by 64 using rightshift >> 6
+	wordBits         = 64
+	wordShift        = 6            // log2(64), divide by 64 via >> 6
+	indexMask        = wordBits - 1 // for i & indexMask
+	wordMask  uint64 = ^uint64(0)   // 0xFFFFFFFFFFFFFFFF
 )
+
+// MaskFrom returns a 64-bit mask with ones in [off, 63] and zeros in [0, off).
+// off ∈ [0, 64]. off==0 → ^uint64(0); off==64 → 0.
+func MaskFrom(off uint) uint64 { return wordMask << off }
+
+// MaskUpto returns a 64-bit mask with ones in [0, off) and zeros in [off, 63].
+// off ∈ [0, 64]. off==0 → 0; off==64 → ^uint64(0).
+func MaskUpto(off uint) uint64 { return (uint64(1) << off) - 1 }
+
+// wordIndex converts a bit index to (wordIdx, bitOffset).
+func wordIndex(i int) (w int, off uint) { return i >> wordShift, uint(i & indexMask) }
 
 // Bitmap is a growable bitset backed by 64-bit words.
 type Bitmap struct {
-	words   []uint64
-	lenBits int
-	// cache
-	wordCount int    // number of words covering Len(); (lenBits + wordMask) >> wordShift
-	tailMask  uint64 // mask for last used word; 0 if lenBits==0; ^0 if lenBits%64==0
+	words       []uint64
+	lenBits     int
+	lastWordIdx int    // index of last logical word; -1 if Len()==0
+	tailMask    uint64 // mask for last logical word; 0 if Len()==0; wordMask if Len()%64==0
 }
 
 // New returns an empty bitmap sized for nbits bits (Len==nbits).
 func New(nbits uint) *Bitmap {
 	b := &Bitmap{
-		words:   make([]uint64, (nbits+wordMask)>>wordShift),
+		words:   make([]uint64, (nbits+indexMask)>>wordShift),
 		lenBits: int(nbits),
 	}
-	b.computeCache()
+	b.finalize()
 	return b
 }
 
-// computeCache recomputes cache fields from lenBits only.
-func (b *Bitmap) computeCache() {
-	if b.lenBits == 0 {
-		b.wordCount = 0
-		b.tailMask = 0
-		return
-	}
-	b.wordCount = int((b.lenBits + wordMask) >> wordShift)
-
-	r := uint(b.lenBits) & wordMask // 0..63
-	if r == 0 {
-		b.tailMask = ^uint64(0)
-		return
-	}
-	b.tailMask = (uint64(1) << r) - 1
+// finalize recomputes cache then applies tail masking to enforce invariants.
+func (b *Bitmap) finalize() {
+	b.computeCache()
+	b.maskTail()
 }
+
+// --- Public Bitmap API ---
 
 // Len returns the logical length in bits.
 func (b *Bitmap) Len() int { return b.lenBits }
@@ -64,14 +67,13 @@ func (b *Bitmap) Any() bool {
 		return false
 	}
 	// full words except the last
-	lastIdx := b.wordCount - 1
-	for i := range lastIdx {
+	for i := range b.lastWordIdx {
 		if b.words[i] != 0 {
 			return true
 		}
 	}
 	// masked last word
-	return (b.words[lastIdx] & b.tailMask) != 0
+	return (b.words[b.lastWordIdx] & b.tailMask) != 0
 }
 
 // Count returns the number of set bits in [0, Len()).
@@ -80,11 +82,10 @@ func (b *Bitmap) Count() int {
 		return 0
 	}
 	sum := 0
-	lastIdx := b.wordCount - 1
-	for i := range lastIdx {
+	for i := range b.lastWordIdx {
 		sum += bits.OnesCount64(b.words[i])
 	}
-	return sum + bits.OnesCount64(b.words[lastIdx]&b.tailMask)
+	return sum + bits.OnesCount64(b.words[b.lastWordIdx]&b.tailMask)
 }
 
 // NextSetBit returns the index of the first set bit >= from, or -1 if none.
@@ -98,52 +99,55 @@ func (b *Bitmap) NextSetBit(from int) int {
 	}
 	w, off := wordIndex(from)
 
-	limit := b.wordCount
-
-	// first word
-	word := b.words[w] & (^uint64(0) << off)
-	// if this first word is also the last logical word, mask its tail
-	if w == limit-1 {
-		word &= b.tailMask
+	// first word: keep bits from off..63, also tail-mask if it is the last
+	first := b.words[w] & MaskFrom(off)
+	if w == b.lastWordIdx {
+		first &= b.tailMask
 	}
-	if word != 0 {
-		return (w << wordShift) + bits.TrailingZeros64(word)
+	if first != 0 {
+		return (w << wordShift) + bits.TrailingZeros64(first)
 	}
 
 	// middle full words (if any)
-	for w = w + 1; w < limit-1; w++ {
-		if b.words[w] != 0 {
-			return (w << wordShift) + bits.TrailingZeros64(b.words[w])
+	for w = w + 1; w < b.lastWordIdx; w++ {
+		if x := b.words[w]; x != 0 {
+			return (w << wordShift) + bits.TrailingZeros64(x)
 		}
 	}
 
 	// last word
-	if w == limit-1 {
-		last := b.words[w] & b.tailMask
-		if last != 0 {
-			return (w << wordShift) + bits.TrailingZeros64(last)
+	if w == b.lastWordIdx {
+		if x := b.words[w] & b.tailMask; x != 0 {
+			return (w << wordShift) + bits.TrailingZeros64(x)
 		}
 	}
-
 	return -1
 }
 
-// --- internal helpers ---
+// --- internal methods ---
 
-// maskTail zeros bits >= Len() in the last word using cached tailMask.
-func maskTail(b *Bitmap) {
-	if b.lenBits <= 0 || len(b.words) == 0 || b.wordCount == 0 {
+// computeCache recomputes cache fields from lenBits only.
+func (b *Bitmap) computeCache() {
+	if b.lenBits == 0 {
+		b.lastWordIdx = -1
+		b.tailMask = 0
 		return
 	}
-	last := b.wordCount - 1
-	b.words[last] &= b.tailMask
+	// ceil(lenBits/64) - 1
+	b.lastWordIdx = int((b.lenBits+indexMask)>>wordShift) - 1
+
+	r := uint(b.lenBits) & indexMask // bits used in last word, 0..63
+	if r == 0 {
+		b.tailMask = wordMask
+		return
+	}
+	b.tailMask = MaskUpto(r)
 }
 
-// finalize recomputes cache then applies tail masking to enforce invariants.
-func finalize(b *Bitmap) {
-	b.computeCache()
-	maskTail(b)
+// maskTail zeros bits >= Len() in the last word using cached tailMask.
+func (b *Bitmap) maskTail() {
+	if b.lenBits <= 0 || len(b.words) == 0 || b.lastWordIdx < 0 {
+		return
+	}
+	b.words[b.lastWordIdx] &= b.tailMask
 }
-
-// wordIndex converts a bit index to (wordIdx, bitOffset).
-func wordIndex(i int) (w int, off uint) { return i >> wordShift, uint(i & wordMask) }

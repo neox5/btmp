@@ -25,7 +25,7 @@ func FuzzBitmapAgainstRef(f *testing.F) {
 		}
 
 		rng := rand.New(rand.NewSource(seed))
-		b := btmp.New()
+		b := btmp.New(0)
 		r := newRef(0)
 
 		for range int(opsN) {
