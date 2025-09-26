@@ -1,3 +1,16 @@
+// Package btmp provides a compact, growable bitmap optimized for fast range
+// updates and overlap-safe copies, plus a zero-copy row-major 2D Grid view.
+//
+// Conventions:
+//   - Length is in bits (Len).
+//   - Storage is []uint64 words, exposed via Words() for read-only inspection.
+//   - Ranges use (start, count).
+//   - All operations are in-bounds only - no auto-growth.
+//   - All mutating methods return *Bitmap for chaining.
+//
+// Invariant:
+//   - After any public mutator returns, all bits at indexes >= Len() are zero,
+//     even when count == 0.
 package btmp
 
 import "math/bits"
@@ -8,31 +21,6 @@ const (
 	IndexMask        = WordBits - 1 // for i & IndexMask
 	WordMask  uint64 = ^uint64(0)   // 0xFFFFFFFFFFFFFFFF
 )
-
-// MaskFrom returns a mask with ones in [off, 63] and zeros in [0, off).
-// If off >= 64, it returns 0.
-func MaskFrom(off uint) uint64 {
-	if off >= WordBits { return 0 }
-	return WordMask << off
-}
-
-// MaskUpto returns a mask with ones in [0, off) and zeros in [off, 63].
-// If off >= 64, it returns WordMask. If off == 0, it returns 0.
-func MaskUpto(off uint) uint64 {
-	if off >= WordBits { return WordMask }
-	if off == 0 { return 0 }
-	return (uint64(1) << off) - 1
-}
-
-// MaskRange returns a mask with ones in [lo, hi) and zeros elsewhere.
-// If lo >= hi, it returns 0. Valid for 0 ≤ lo,hi ≤ 64.
-func MaskRange(lo, hi uint) uint64 {
-	if lo >= hi { return 0 }
-	return MaskFrom(lo) & MaskUpto(hi)
-}
-
-// wordIndex converts a bit index to (wordIdx, bitOffset).
-func wordIndex(i int) (w int, off int) { return i >> WordShift, i & IndexMask }
 
 // Bitmap is a growable bitset backed by 64-bit words.
 type Bitmap struct {
@@ -48,17 +36,9 @@ func New(nbits uint) *Bitmap {
 		words:   make([]uint64, (nbits+IndexMask)>>WordShift),
 		lenBits: int(nbits),
 	}
-	b.finalize()
+	b.computeCache()
 	return b
 }
-
-// finalize recomputes cache then applies tail masking to enforce invariants.
-func (b *Bitmap) finalize() {
-	b.computeCache()
-	b.maskTail()
-}
-
-// --- Public Bitmap API ---
 
 // Len returns the logical length in bits.
 func (b *Bitmap) Len() int { return b.lenBits }
@@ -68,9 +48,9 @@ func (b *Bitmap) Words() []uint64 { return b.words }
 
 // Test reports whether bit i is set. Panics if i is out of [0, Len()).
 func (b *Bitmap) Test(i int) bool {
-	if i < 0 || i >= b.lenBits {
-		panic("Test: index out of range")
-	}
+	validatePosition(i)
+	b.validateInBounds(i)
+
 	w, off := wordIndex(i)
 	return (b.words[w]>>off)&1 == 1
 }
@@ -102,7 +82,89 @@ func (b *Bitmap) Count() int {
 	return sum + bits.OnesCount64(b.words[b.lastWordIdx]&b.tailMask)
 }
 
-// --- internal methods ---
+// SetBit sets bit i to 1. Panics if i < 0 or i >= Len().
+func (b *Bitmap) SetBit(i int) *Bitmap {
+	validatePosition(i)
+	b.validateInBounds(i)
+
+	b.setBit(i)
+	return b
+}
+
+// ClearBit sets bit i to 0. Panics if i < 0 or i >= Len().
+func (b *Bitmap) ClearBit(i int) *Bitmap {
+	validatePosition(i)
+	b.validateInBounds(i)
+
+	b.clearBit(i)
+	return b
+}
+
+// FlipBit toggles bit i. Panics if i < 0 or i >= Len().
+func (b *Bitmap) FlipBit(i int) *Bitmap {
+	validatePosition(i)
+	b.validateInBounds(i)
+
+	b.flipBit(i)
+	return b
+}
+
+// SetRange sets bits in [start, start+count) to 1. In-bounds only.
+// Returns *Bitmap for chaining. Panics on negative inputs, overflow, or out-of-bounds.
+func (b *Bitmap) SetRange(start, count int) *Bitmap {
+	b.validateRange(start, count)
+
+	b.setRange(start, count)
+	return b
+}
+
+// ClearRange clears bits in [start, start+count) to 0. In-bounds only.
+// Returns *Bitmap for chaining. Panics on negative inputs, overflow, or out-of-bounds.
+func (b *Bitmap) ClearRange(start, count int) *Bitmap {
+	b.validateRange(start, count)
+
+	b.clearRange(start, count)
+	return b
+}
+
+// CopyRange copies count bits from src[srcStart:] to dst[dstStart:].
+// In-bounds only for both src and dst. Overlap-safe with memmove semantics.
+// Returns *Bitmap for chaining. Panics on negative inputs, nil src, or out-of-bounds.
+func (b *Bitmap) CopyRange(src *Bitmap, srcStart, dstStart, count int) *Bitmap {
+	if src == nil {
+		panic("CopyRange: nil source")
+	}
+
+	src.validateRange(srcStart, count)
+	b.validateRange(dstStart, count)
+
+	b.copyRange(src, srcStart, dstStart, count)
+	return b
+}
+
+// EnsureBits grows the logical length to at least n bits. No-op if n <= Len().
+// Returns *Bitmap for chaining. Panics if n < 0.
+func (b *Bitmap) EnsureBits(n int) *Bitmap {
+	validatePosition(n) // reuse for non-negative validation
+
+	if n > b.lenBits {
+		b.ensureBits(n)
+		b.computeCache()
+	}
+	return b
+}
+
+// AddBits grows the logical length by n bits.
+// Returns *Bitmap for chaining. Panics if n < 0.
+func (b *Bitmap) AddBits(n int) *Bitmap {
+	validateCount(n)
+
+	if n > 0 {
+		b.addBits(n)
+		b.computeCache()
+	}
+	return b
+}
 
 // computeCache recomputes cache fields from lenBits only.
 func (b *Bitmap) computeCache() {
@@ -122,29 +184,7 @@ func (b *Bitmap) computeCache() {
 	b.tailMask = MaskUpto(r)
 }
 
-// maskTail zeros bits >= Len() in the last word using cached tailMask.
-func (b *Bitmap) maskTail() {
-	if b.lenBits <= 0 || len(b.words) == 0 || b.lastWordIdx < 0 {
-		return
-	}
-	b.words[b.lastWordIdx] &= b.tailMask
-}
-
-// checkedEnd validates start/count, returns end, and panics if end > lenBits.
-// No growth.
-func (b *Bitmap) checkedEnd(start, count int) int {
-	if start < 0 {
-		panic("Bitmap: negative start")
-	}
-	if count < 0 {
-		panic("Bitmap: negative count")
-	}
-	end := start + count
-	if end < start {
-		panic("Bitmap: integer overflow on end")
-	}
-	if end > b.lenBits {
-		panic("Bitmap: out of bounds")
-	}
-	return end
+// wordIndex converts a bit index to (wordIdx, bitOffset).
+func wordIndex(i int) (w int, off int) {
+	return i >> WordShift, i & IndexMask
 }
