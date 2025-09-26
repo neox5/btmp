@@ -30,7 +30,7 @@ func (b *Bitmap) EnsureBits(n int) *Bitmap {
 // No-op if n == 0. Panic if n < 0.
 //
 // Uses EnsireBits for final execution.
-func (b *Bitmap) AddBits(n int) *Bitmap  {
+func (b *Bitmap) AddBits(n int) *Bitmap {
 	if n < 0 {
 		panic("AddBits: negative length")
 	}

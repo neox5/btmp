@@ -3,7 +3,6 @@ package btmp
 // SetRange sets bits in [start, start+count) to 1. Auto-grows if needed.
 // No-op if count == 0. Returns b for chaining.
 func (b *Bitmap) SetRange(start, count int) *Bitmap {
-	defer b.finalize()
 	if count == 0 {
 		return b
 	}
@@ -40,7 +39,6 @@ func (b *Bitmap) SetRange(start, count int) *Bitmap {
 // ClearRange clears bits in [start, start+count) to 0. In-bounds only.
 // No-op if count == 0. Returns b for chaining.
 func (b *Bitmap) ClearRange(start, count int) *Bitmap {
-	defer b.finalize()
 	if count == 0 {
 		return b
 	}
@@ -77,7 +75,6 @@ func (b *Bitmap) ClearRange(start, count int) *Bitmap {
 // In-bounds only - no auto-grow. Overlap-safe with memmove semantics.
 // No-op if count == 0. Returns b for chaining.
 func (b *Bitmap) CopyRange(src *Bitmap, srcStart, dstStart, count int) *Bitmap {
-	defer b.finalize()
 	if count == 0 || srcStart == dstStart {
 		return b
 	}
@@ -98,7 +95,6 @@ func (b *Bitmap) CopyRange(src *Bitmap, srcStart, dstStart, count int) *Bitmap {
 // Equivalent to CopyRange followed by clearing the source range.
 // Auto-grows destination if needed. Returns b for chaining.
 func (b *Bitmap) MoveRange(src, dst, count int) *Bitmap {
-	defer b.finalize()
 	b.CopyRange(b, src, dst, count)
 	if count > 0 && src != dst {
 		b.ClearRange(src, count)
