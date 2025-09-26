@@ -30,11 +30,11 @@ type Bitmap struct {
 	tailMask    uint64 // mask for last logical word; 0 if Len()==0; WordMask if Len()%64==0
 }
 
-// New returns an empty bitmap sized for nbits bits (Len==nbits).
-func New(nbits uint) *Bitmap {
+// New returns an empty bitmap sized for n bits (Len==n).
+func New(n uint) *Bitmap {
 	b := &Bitmap{
-		words:   make([]uint64, (nbits+IndexMask)>>WordShift),
-		lenBits: int(nbits),
+		words:   make([]uint64, (n+IndexMask)>>WordShift),
+		lenBits: int(n),
 	}
 	b.computeCache()
 	return b

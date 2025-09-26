@@ -41,7 +41,7 @@ _ = bits
 **Bitmap**
 
 Constructor:
-* `New(nbits uint) *Bitmap`
+* `New(n uint) *Bitmap`
 
 Accessors:
 * `(*Bitmap) Len() int`
