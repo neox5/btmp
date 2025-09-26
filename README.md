@@ -1,4 +1,3 @@
-```md
 # btmp
 
 Compact, growable bitmap for Go. Fast range updates, overlap-safe copies, and a zero-copy row-major grid view.
@@ -19,7 +18,12 @@ b := btmp.New(0).
     EnsureBits(8192).
     SetRange(100, 32).
     ClearRange(110, 4).
-    CopyRange(b, 0, 256, 64)
+    CopyRange(b, 0, 256, 64).
+    SetBits(500, 8, 0xFF).
+    SetAll()
+
+b2 := btmp.New(8192).SetRange(200, 50)
+b.And(b2).Or(b2).Xor(b2).Not()
 
 g := btmp.NewGrid(16).
     SetRect(3, 2, 5, 4).
@@ -27,7 +31,9 @@ g := btmp.NewGrid(16).
     GrowRows(10)
 
 idx := g.Index(7, 3)
+bits := b.GetBits(100, 16)
 _ = idx
+_ = bits
 ```
 
 ## API surface (V1)
@@ -40,23 +46,39 @@ Constructor:
 Accessors:
 * `(*Bitmap) Len() int`
 * `(*Bitmap) Words() []uint64`
-* `(*Bitmap) Test(i int) bool`
-* `(*Bitmap) Any() bool`
-* `(*Bitmap) Count() int`
 
 Growth mutators:
 * `(*Bitmap) EnsureBits(n int) *Bitmap`
 * `(*Bitmap) AddBits(n int) *Bitmap`
 
+Query operations:
+* `(*Bitmap) Test(pos int) bool`
+* `(*Bitmap) GetBits(pos, n int) uint64`
+* `(*Bitmap) Any() bool`
+* `(*Bitmap) Count() int`
+
 Single-bit mutators:
-* `(*Bitmap) SetBit(i int) *Bitmap`
-* `(*Bitmap) ClearBit(i int) *Bitmap`
-* `(*Bitmap) FlipBit(i int) *Bitmap`
+* `(*Bitmap) SetBit(pos int) *Bitmap`
+* `(*Bitmap) ClearBit(pos int) *Bitmap`
+* `(*Bitmap) FlipBit(pos int) *Bitmap`
+
+Multi-bit mutators:
+* `(*Bitmap) SetBits(pos, n int, val uint64) *Bitmap`
 
 Range mutators:
 * `(*Bitmap) SetRange(start, count int) *Bitmap`
 * `(*Bitmap) ClearRange(start, count int) *Bitmap`
 * `(*Bitmap) CopyRange(src *Bitmap, srcStart, dstStart, count int) *Bitmap`
+
+Bulk mutators:
+* `(*Bitmap) SetAll() *Bitmap`
+* `(*Bitmap) ClearAll() *Bitmap`
+
+Logical operations:
+* `(*Bitmap) And(other *Bitmap) *Bitmap`
+* `(*Bitmap) Or(other *Bitmap) *Bitmap`
+* `(*Bitmap) Xor(other *Bitmap) *Bitmap`
+* `(*Bitmap) Not() *Bitmap`
 
 **Grid**
 
@@ -76,4 +98,3 @@ Range mutators:
 ## License
 
 MIT. See `LICENSE`.
-```

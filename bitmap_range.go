@@ -174,3 +174,32 @@ func (b *Bitmap) moveRange(srcStart, dstStart, count int) {
 		}
 	}
 }
+
+// setAll sets all bits in [0, Len()) to 1.
+// Internal implementation - no validation, no finalization.
+func (b *Bitmap) setAll() {
+	if b.lenBits == 0 {
+		return
+	}
+
+	// Set all full words
+	for i := range b.lastWordIdx {
+		b.words[i] = WordMask
+	}
+
+	// Set masked last word
+	b.words[b.lastWordIdx] = b.tailMask
+}
+
+// clearAll clears all bits in [0, Len()) to 0.
+// Internal implementation - no validation, no finalization.
+func (b *Bitmap) clearAll() {
+	if b.lenBits == 0 {
+		return
+	}
+
+	// Clear all words up to and including last logical word
+	for i := range b.lastWordIdx + 1 {
+		b.words[i] = 0
+	}
+}

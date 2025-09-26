@@ -46,13 +46,50 @@ func (b *Bitmap) Len() int { return b.lenBits }
 // Words exposes the underlying words slice (length may exceed the logical need).
 func (b *Bitmap) Words() []uint64 { return b.words }
 
-// Test reports whether bit i is set. Panics if i is out of [0, Len()).
-func (b *Bitmap) Test(i int) bool {
-	validatePosition(i)
-	b.validateInBounds(i)
+// EnsureBits grows the logical length to at least n bits. No-op if n <= Len().
+// Returns *Bitmap for chaining. Panics if n < 0.
+func (b *Bitmap) EnsureBits(n int) *Bitmap {
+	validatePosition(n) // reuse for non-negative validation
 
-	w, off := wordIndex(i)
+	if n > b.lenBits {
+		b.ensureBits(n)
+		b.computeCache()
+	}
+	return b
+}
+
+// AddBits grows the logical length by n bits.
+// Returns *Bitmap for chaining. Panics if n < 0.
+func (b *Bitmap) AddBits(n int) *Bitmap {
+	validateCount(n)
+
+	if n > 0 {
+		b.addBits(n)
+		b.computeCache()
+	}
+	return b
+}
+
+// Test reports whether bit pos is set. Panics if pos is out of [0, Len()).
+func (b *Bitmap) Test(pos int) bool {
+	validatePosition(pos)
+	b.validateInBounds(pos)
+
+	w, off := wordIndex(pos)
 	return (b.words[w]>>off)&1 == 1
+}
+
+// GetBits extracts n bits starting from pos, returned right-aligned.
+// The result contains the extracted bits in the least significant positions.
+// Panics if pos < 0, n <= 0, n > 64, or pos+n > Len().
+//
+// Example: bitmap 11010110, GetBits(2, 3) returns 101 (bits at positions 2,3,4).
+func (b *Bitmap) GetBits(pos, n int) uint64 {
+	validatePosition(pos)
+	validateWordBits(n)
+	b.validateRange(pos, n)
+
+	return b.getBits(pos, n)
 }
 
 // Any reports whether any bit in [0, Len()) is set.
@@ -82,30 +119,45 @@ func (b *Bitmap) Count() int {
 	return sum + bits.OnesCount64(b.words[b.lastWordIdx]&b.tailMask)
 }
 
-// SetBit sets bit i to 1. Panics if i < 0 or i >= Len().
-func (b *Bitmap) SetBit(i int) *Bitmap {
-	validatePosition(i)
-	b.validateInBounds(i)
+// SetBit sets bit pos to 1. Panics if pos < 0 or pos >= Len().
+func (b *Bitmap) SetBit(pos int) *Bitmap {
+	validatePosition(pos)
+	b.validateInBounds(pos)
 
-	b.setBit(i)
+	b.setBit(pos)
 	return b
 }
 
-// ClearBit sets bit i to 0. Panics if i < 0 or i >= Len().
-func (b *Bitmap) ClearBit(i int) *Bitmap {
-	validatePosition(i)
-	b.validateInBounds(i)
+// ClearBit sets bit pos to 0. Panics if pos < 0 or pos >= Len().
+func (b *Bitmap) ClearBit(pos int) *Bitmap {
+	validatePosition(pos)
+	b.validateInBounds(pos)
 
-	b.clearBit(i)
+	b.clearBit(pos)
 	return b
 }
 
-// FlipBit toggles bit i. Panics if i < 0 or i >= Len().
-func (b *Bitmap) FlipBit(i int) *Bitmap {
-	validatePosition(i)
-	b.validateInBounds(i)
+// FlipBit toggles bit pos. Panics if pos < 0 or pos >= Len().
+func (b *Bitmap) FlipBit(pos int) *Bitmap {
+	validatePosition(pos)
+	b.validateInBounds(pos)
 
-	b.flipBit(i)
+	b.flipBit(pos)
+	return b
+}
+
+// SetBits inserts the low n bits of val into the bitmap starting at pos.
+// Only the least significant n bits of val are used; higher bits are ignored.
+// Preserves surrounding bits unchanged. Panics if pos < 0, n <= 0, n > 64, or pos+n > Len().
+// Returns *Bitmap for chaining.
+//
+// Example: SetBits(2, 3, 0b101) sets 3 bits starting at position 2 to the pattern 101.
+func (b *Bitmap) SetBits(pos, n int, val uint64) *Bitmap {
+	validatePosition(pos)
+	validateWordBits(n)
+	b.validateRange(pos, n)
+
+	b.setBits(pos, n, val)
 	return b
 }
 
@@ -142,27 +194,62 @@ func (b *Bitmap) CopyRange(src *Bitmap, srcStart, dstStart, count int) *Bitmap {
 	return b
 }
 
-// EnsureBits grows the logical length to at least n bits. No-op if n <= Len().
-// Returns *Bitmap for chaining. Panics if n < 0.
-func (b *Bitmap) EnsureBits(n int) *Bitmap {
-	validatePosition(n) // reuse for non-negative validation
-
-	if n > b.lenBits {
-		b.ensureBits(n)
-		b.computeCache()
-	}
+// SetAll sets all bits in [0, Len()) to 1.
+// Equivalent to SetRange(0, Len()) but optimized for full bitmap operations.
+// Returns *Bitmap for chaining.
+func (b *Bitmap) SetAll() *Bitmap {
+	b.setAll()
 	return b
 }
 
-// AddBits grows the logical length by n bits.
-// Returns *Bitmap for chaining. Panics if n < 0.
-func (b *Bitmap) AddBits(n int) *Bitmap {
-	validateCount(n)
+// ClearAll clears all bits in [0, Len()) to 0.
+// Equivalent to ClearRange(0, Len()) but optimized for full bitmap operations.
+// Returns *Bitmap for chaining.
+func (b *Bitmap) ClearAll() *Bitmap {
+	b.clearAll()
+	return b
+}
 
-	if n > 0 {
-		b.addBits(n)
-		b.computeCache()
+// And performs bitwise AND with other bitmap. Both bitmaps must have the same length.
+// Returns *Bitmap for chaining. Panics if other is nil or lengths differ.
+func (b *Bitmap) And(other *Bitmap) *Bitmap {
+	if other == nil {
+		panic("And: nil bitmap")
 	}
+	validateSameLength(b, other)
+
+	b.and(other)
+	return b
+}
+
+// Or performs bitwise OR with other bitmap. Both bitmaps must have the same length.
+// Returns *Bitmap for chaining. Panics if other is nil or lengths differ.
+func (b *Bitmap) Or(other *Bitmap) *Bitmap {
+	if other == nil {
+		panic("Or: nil bitmap")
+	}
+	validateSameLength(b, other)
+
+	b.or(other)
+	return b
+}
+
+// Xor performs bitwise XOR with other bitmap. Both bitmaps must have the same length.
+// Returns *Bitmap for chaining. Panics if other is nil or lengths differ.
+func (b *Bitmap) Xor(other *Bitmap) *Bitmap {
+	if other == nil {
+		panic("Xor: nil bitmap")
+	}
+	validateSameLength(b, other)
+
+	b.xor(other)
+	return b
+}
+
+// Not performs bitwise NOT, flipping all bits in [0, Len()).
+// Returns *Bitmap for chaining.
+func (b *Bitmap) Not() *Bitmap {
+	b.not()
 	return b
 }
 

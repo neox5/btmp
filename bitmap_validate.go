@@ -32,6 +32,14 @@ func validateNoOverflow(start, count int) {
 	}
 }
 
+// validateSameLength validates that two bitmaps have identical length.
+// Panics if lengths differ.
+func validateSameLength(a, b *Bitmap) {
+	if a.Len() != b.Len() {
+		panic("bitmaps must have same length")
+	}
+}
+
 // validateInBounds validates that position is within bitmap bounds.
 // Panics if pos >= bitmap length.
 func (b *Bitmap) validateInBounds(pos int) {
