@@ -34,7 +34,6 @@ _ = idx
 **Bitmap**
 
 * `New() *Bitmap`
-* `NewWithCap(capBits int) *Bitmap`
 * `(*Bitmap) Len() int`
 * `(*Bitmap) Words() []uint64`
 * `(*Bitmap) Test(i int) bool`

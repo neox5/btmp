@@ -1,5 +1,26 @@
 package btmp
 
+// setBit sets bit at position i to 1.
+// Internal implementation - no validation, no finalization.
+func (b *Bitmap) setBit(i int) {
+	w, off := wordIndex(i)
+	b.words[w] |= uint64(1) << off
+}
+
+// clearBit sets bit at position i to 0.
+// Internal implementation - no validation, no finalization.
+func (b *Bitmap) clearBit(i int) {
+	w, off := wordIndex(i)
+	b.words[w] &^= uint64(1) << off
+}
+
+// flipBit toggles bit at position i.
+// Internal implementation - no validation, no finalization.
+func (b *Bitmap) flipBit(i int) {
+	w, off := wordIndex(i)
+	b.words[w] ^= uint64(1) << off
+}
+
 // getBits extracts n bits starting from pos, returned right-aligned.
 // No validation performed - caller must ensure bounds.
 //
