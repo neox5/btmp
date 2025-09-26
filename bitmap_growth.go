@@ -7,14 +7,14 @@ import "slices"
 //
 // Invariant: after return, all bits >= Len() are zero.
 func (b *Bitmap) EnsureBits(n int) *Bitmap {
-	defer b.finalize()
+	defer b.computeCache() // we mask (zeroing) the new words if added.
 	if n < 0 {
 		panic("EnsureBits: negative length")
 	}
 	if n <= b.lenBits {
 		return b
 	}
-	need := int((n + indexMask) >> wordShift)
+	need := int((n + IndexMask) >> WordShift)
 
 	if need > len(b.words) {
 		old := len(b.words)
@@ -26,35 +26,17 @@ func (b *Bitmap) EnsureBits(n int) *Bitmap {
 	return b
 }
 
-// ReserveCap ensures capacity for at least n bits without changing Len().
-// Panics if n < 0. Returns b.
-func (b *Bitmap) ReserveCap(n int) *Bitmap {
-	defer b.finalize()
+// AddBits grows the logical length by n bits. Newly added bits are zero.
+// No-op if n == 0. Panic if n < 0.
+//
+// Uses EnsireBits for final execution.
+func (b *Bitmap) AddBits(n int) *Bitmap  {
 	if n < 0 {
-		panic("ReserveCap: negative")
+		panic("AddBits: negative length")
 	}
-	needWords := int((n + indexMask) >> wordShift)
-	if needWords > cap(b.words) {
-		// Grow capacity to at least needWords; length stays the same.
-		b.words = slices.Grow(b.words, needWords-cap(b.words))
+	if n == 0 {
+		return b
 	}
-	return b
-}
 
-// Truncate reslices storage to the minimal number of words for Len().
-// Capacity unchanged.
-func (b *Bitmap) Truncate() *Bitmap {
-	defer b.finalize()
-	need := int((b.lenBits + indexMask) >> wordShift)
-	if need < len(b.words) {
-		b.words = b.words[:need]
-	}
-	return b
-}
-
-// Clip drops excess capacity after Truncate.
-func (b *Bitmap) Clip() *Bitmap {
-	defer b.finalize()
-	b.words = slices.Clip(b.words)
-	return b
+	return b.EnsureBits(b.lenBits + n)
 }

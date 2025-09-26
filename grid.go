@@ -17,21 +17,6 @@ func NewGrid(cols int) *Grid {
 	return &Grid{B: New(0), cols: cols}
 }
 
-// NewGridWithCap returns a Grid with capacity for rowsCap rows.
-// Accepts cols == 0 or rowsCap == 0.
-func NewGridWithCap(cols, rowsCap int) *Grid {
-	if cols < 0 || rowsCap < 0 {
-		panic("NewGridWithCap: negative input")
-	}
-	cap := rowsCap * cols
-	if cap < 0 {
-		panic("NewGridWithCap: overflow")
-	}
-	b := New(0)
-	b.ReserveCap(cap)
-	return &Grid{B: b, cols: cols}
-}
-
 // NewGridWithSize returns a Grid sized to rows*cols bits.
 // Accepts cols == 0 or rows == 0.
 func NewGridWithSize(cols, rows int) *Grid {
@@ -146,7 +131,7 @@ func (g *Grid) GrowCols(delta int) *Grid {
 		for r := rows - 1; r >= 0; r-- {
 			srcStart := r * oldCols
 			dstStart := r * newCols
-			g.B.CopyRange(g.B, srcStart, dstStart, oldCols)
+			g.B.CopyRange(srcStart, dstStart, oldCols)
 
 			// Clear any old data that now falls within another row's space
 			clearStart := srcStart

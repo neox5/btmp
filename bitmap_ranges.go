@@ -1,239 +1,218 @@
 package btmp
 
-// SetRange sets bits in [start, start+count). Auto-grows to fit end.
-// No-op if count == 0. Returns b.
-//
-// Invariant: after return, all bits >= Len() are zero, even when count == 0.
+// SetRange sets bits in [start, start+count) to 1. Auto-grows if needed.
+// No-op if count == 0. Returns b for chaining.
 func (b *Bitmap) SetRange(start, count int) *Bitmap {
 	defer b.finalize()
-	if count < 0 {
-		panic("SetRange: negative count")
-	}
 	if count == 0 {
 		return b
 	}
-	end := checkedEnd(start, count)
-	b.EnsureBits(end)
+	b.EnsureBits(start + count)
+	end := start + count
 
-	// head partial word
-	w, off := wordIndex(start)
-	if off != 0 {
-		n := min(count, wordBits-int(off))
-		mask := MaskFrom(off)
-		if n < wordBits-int(off) {
-			mask &= MaskUpto(off + uint(n))
-		}
-		b.words[w] |= mask
-		start += n
-		count -= n
+	w0, off0 := wordIndex(start)
+	w1, off1 := wordIndex(end)
+
+	// Single word.
+	if w0 == w1 {
+		b.words[w0] |= MaskRange(uint(off0), uint(off1))
+		return b
 	}
 
-	// middle full words
-	for count >= wordBits {
-		w, _ := wordIndex(start)
-		b.words[w] = wordMask
-		start += wordBits
-		count -= wordBits
+	// Head partial word.
+	if off0 != 0 {
+		b.words[w0] |= MaskFrom(uint(off0))
 	}
 
-	// tail partial word
-	if count > 0 {
-		w, _ := wordIndex(start)
-		b.words[w] |= MaskUpto(uint(count))
+	// Middle full words.
+	for w := w0 + 1; w < w1; w++ {
+		b.words[w] = WordMask
+	}
+
+	// Tail partial word.
+	if off1 != 0 {
+		b.words[w1] |= MaskUpto(uint(off1))
 	}
 
 	return b
 }
 
-// ClearRange clears bits in [start, start+count). In-bounds only.
-// No-op if count == 0. Returns b.
-//
-// Invariant: after return, all bits >= Len() are zero, even when count == 0.
+// ClearRange clears bits in [start, start+count) to 0. In-bounds only.
+// No-op if count == 0. Returns b for chaining.
 func (b *Bitmap) ClearRange(start, count int) *Bitmap {
 	defer b.finalize()
-	if count < 0 {
-		panic("ClearRange: negative count")
-	}
 	if count == 0 {
 		return b
 	}
-	end := checkedEnd(start, count)
-	if end > b.lenBits {
-		panic("ClearRange: out of bounds")
+	end := b.checkedEnd(start, count)
+
+	w0, off0 := wordIndex(start)
+	w1, off1 := wordIndex(end)
+
+	// Single word.
+	if w0 == w1 {
+		b.words[w0] &^= MaskRange(uint(off0), uint(off1))
+		return b
 	}
 
-	// head partial word
-	w, off := wordIndex(start)
-	if off != 0 {
-		n := min(count, wordBits-int(off))
-		mask := MaskFrom(off)
-		if n < wordBits-int(off) {
-			mask &= MaskUpto(off + uint(n))
-		}
-		b.words[w] &^= mask
-		start += n
-		count -= n
+	// Head partial word.
+	if off0 != 0 {
+		b.words[w0] &^= MaskFrom(uint(off0))
 	}
 
-	// middle full words
-	for count >= wordBits {
-		w, _ := wordIndex(start)
+	// Middle full words.
+	for w := w0 + 1; w < w1; w++ {
 		b.words[w] = 0
-		start += wordBits
-		count -= wordBits
 	}
 
-	// tail partial word
-	if count > 0 {
-		w, _ := wordIndex(start)
-		b.words[w] &^= MaskUpto(uint(count))
+	// Tail partial word.
+	if off1 != 0 {
+		b.words[w1] &^= MaskUpto(uint(off1))
 	}
 
 	return b
 }
 
-// CopyRange copies count bits from src at srcStart to b at dstStart with memmove semantics.
-// Auto-grows destination to fit. Panics on nil src or out-of-bounds source. Returns b.
-//
-// Overlap rule: if src == b and ranges overlap, the copy behaves like memmove.
-// Direction selection: forward if dstStart < srcStart or non-overlap, else backward.
-//
-// Invariant: after return, all bits >= Len() are zero, even when count == 0.
+// CopyRange copies count bits from src[srcStart:] to dst[dstStart:].
+// In-bounds only - no auto-grow. Overlap-safe with memmove semantics.
+// No-op if count == 0. Returns b for chaining.
 func (b *Bitmap) CopyRange(src *Bitmap, srcStart, dstStart, count int) *Bitmap {
 	defer b.finalize()
-	if count < 0 {
-		panic("CopyRange: negative count")
-	}
-	if count == 0 {
+	if count == 0 || srcStart == dstStart {
 		return b
 	}
-	if src == nil {
-		panic("CopyRange: nil src")
-	}
-	srcEnd := checkedEnd(srcStart, count)
-	if srcEnd > src.lenBits {
-		panic("CopyRange: source out of bounds")
-	}
+	
+	// Validate bounds - no auto-grow
+	_ = src.checkedEnd(srcStart, count)
+	_ = b.checkedEnd(dstStart, count)
+	
+	// Determine copy direction for overlap safety
+	backward := needsBackwardCopy(srcStart, dstStart, count)
+	
+	// Perform bit-level copy
+	copyBitRange(b, src, srcStart, dstStart, count, backward)
+	return b
+}
 
-	dstEnd := checkedEnd(dstStart, count)
-	b.EnsureBits(dstEnd)
-
-	if src != b || dstStart < srcStart || dstStart >= srcEnd {
-		copyForward(src, b, srcStart, dstStart, count)
-	} else {
-		copyBackward(b, b, srcStart, dstStart, count)
+// MoveRange moves bits from [src, src+count) to [dst, dst+count).
+// Equivalent to CopyRange followed by clearing the source range.
+// Auto-grows destination if needed. Returns b for chaining.
+func (b *Bitmap) MoveRange(src, dst, count int) *Bitmap {
+	defer b.finalize()
+	b.CopyRange(b, src, dst, count)
+	if count > 0 && src != dst {
+		b.ClearRange(src, count)
 	}
 	return b
 }
 
-// checkedEnd validates start and count and returns start+count or panics.
-func checkedEnd(start, count int) int {
-	if start < 0 {
-		panic("negative start")
-	}
-	if count < 0 {
-		panic("negative count")
-	}
-	end := start + count
-	if end < start {
-		panic("overflow")
-	}
-	return end
-}
-
-// copyBit copies a single bit from src to dst.
-func copyBit(src, dst *Bitmap, srcIdx, dstIdx int) {
-	sw, so := wordIndex(srcIdx)
-	dw, do := wordIndex(dstIdx)
-	if sw < len(src.words) && (src.words[sw]>>so)&1 == 1 {
-		dst.words[dw] |= 1 << do
-	} else {
-		dst.words[dw] &^= 1 << do
-	}
-}
-
-// extractWord extracts a 64-bit word from src starting at bit position.
-func extractWord(src *Bitmap, bitPos int) uint64 {
-	sw, soff := wordIndex(bitPos)
-	if sw >= len(src.words) {
-		return 0
-	}
-
-	var v uint64
-	if soff == 0 {
-		v = src.words[sw]
-	} else {
-		v = src.words[sw] >> soff
-		if sw+1 < len(src.words) {
-			v |= src.words[sw+1] << (wordBits - soff)
-		}
-	}
-	return v
-}
-
-// copyForward copies left-to-right.
-func copyForward(src, dst *Bitmap, srcStart, dstStart, count int) {
-	// small ranges: bit-by-bit
-	if count < wordBits {
-		for i := range count {
-			copyBit(src, dst, srcStart+i, dstStart+i)
-		}
-		return
-	}
-
-	// align destination to word boundary
-	for dstStart&indexMask != 0 && count > 0 {
-		copyBit(src, dst, srcStart, dstStart)
-		srcStart++
-		dstStart++
-		count--
-	}
-
-	// word-aligned copies
-	for count >= wordBits {
-		dst.words[dstStart>>wordShift] = extractWord(src, srcStart)
-		srcStart += wordBits
-		dstStart += wordBits
-		count -= wordBits
-	}
-
-	// tail bits
-	for i := range count {
-		copyBit(src, dst, srcStart+i, dstStart+i)
-	}
-}
-
-// copyBackward copies right-to-left.
-func copyBackward(src, dst *Bitmap, srcStart, dstStart, count int) {
-	// small ranges: bit-by-bit from end
-	if count < wordBits {
-		for i := count - 1; i >= 0; i-- {
-			copyBit(src, dst, srcStart+i, dstStart+i)
-		}
-		return
-	}
-
-	end := dstStart + count
+// needsBackwardCopy determines if backward iteration is needed for safe overlapping copy.
+func needsBackwardCopy(srcStart, dstStart, count int) bool {
 	srcEnd := srcStart + count
+	dstEnd := dstStart + count
+	// Overlap exists AND dst > src requires backward copy
+	return srcStart < dstEnd && dstStart < srcEnd && dstStart > srcStart
+}
 
-	// align end down to word boundary
-	for end&indexMask != 0 && count > 0 {
-		end--
-		srcEnd--
-		count--
-		copyBit(src, dst, srcEnd, end)
+// copyBitRange performs the actual bit copying with proper direction handling.
+func copyBitRange(dst, src *Bitmap, srcStart, dstStart, count int, backward bool) {
+	remaining := count
+	sp := srcStart  // source position
+	dp := dstStart  // dest position
+	
+	if backward {
+		sp += count - WordBits
+		dp += count - WordBits
 	}
+	
+	for remaining > 0 {
+		n := min(remaining, WordBits)  // bits to process this iteration
+		
+		if backward && n < WordBits {
+			// Adjust position for final partial chunk
+			adj := WordBits - n
+			sp += adj
+			dp += adj
+		}
+		
+		// Extract bits from source
+		bits := extractBits(src, sp, n)
+		
+		// Insert bits into destination  
+		insertBits(dst, dp, n, bits)
+		
+		remaining -= n
+		if backward {
+			sp -= WordBits  // always step by full word size
+			dp -= WordBits
+		} else {
+			sp += n  // step by actual bits processed
+			dp += n
+		}
+	}
+}
 
-	// word-aligned copies backward
-	for count >= wordBits {
-		end -= wordBits
-		srcEnd -= wordBits
-		dst.words[end>>wordShift] = extractWord(src, srcEnd)
-		count -= wordBits
+// extractBits extracts n bits starting from pos, returned right-aligned.
+func extractBits(src *Bitmap, pos int, n int) uint64 {
+	w, off := wordIndex(pos)
+	
+	// Single word case - most common
+	if off+n <= WordBits {
+		word := src.words[w]
+		return (word >> off) & MaskUpto(uint(n))
 	}
+	
+	// Spans two words case:
+	// Source:     Word w: [ . . . . high ] [ low, off <- pos ]
+	//             Word w+1:[ high, 0 <- ... ] [ . . . . . . . . ]
+	// Transform:  low  = w >> off          (shift right by off)
+	//             high = w+1 & mask        (mask low bitsH bits)
+	// Result:     [ . . . . . . . ] [ high | low ]
+	wL := src.words[w]
+	bitsL := WordBits - off  // bits from first word (low bits of result)
+	bitsH := n - bitsL       // bits from second word (high bits of result)
+	
+	// Extract low bits from first word (shift right to position 0)
+	low := wL >> off
+	
+	// Extract high bits from second word and position them after low bits
+	wH := src.words[w+1]  // checkedEnd guarantees this exists
+	high := wH & MaskUpto(uint(bitsH))
+	
+	return low | (high << bitsL)
+}
 
-	// head remainder bits
-	for i := count - 1; i >= 0; i-- {
-		copyBit(src, dst, srcStart+i, dstStart+i)
+// insertBits inserts the low n bits of val into dst starting at pos.
+func insertBits(dst *Bitmap, pos int, n int, val uint64) {
+	w, off := wordIndex(pos)
+	
+	// Mask val to exactly n bits
+	maskedVal := val & MaskUpto(uint(n)) 
+	
+	// Single word case
+	if off+n <= WordBits {
+		mask := MaskUpto(uint(n)) << off
+		v := maskedVal << off
+		dst.words[w] = (dst.words[w] &^ mask) | v
+		return
 	}
+	
+	// Spans two words case:
+	// Source:     Value: [ . . . . . . . ] [ high | low ]
+	// Transform:  lowVal  = maskedVal << off     (shift left by off)
+	//             highVal = maskedVal >> bitsL   (shift right by bitsL)
+	// Target:     Word w: [ . . . . . . . ] [ lowVal, off <- pos ]
+	//             Word w+1:[ highVal, 0 <- ... ] [ . . . . . . . . ]
+	bitsL := WordBits - off  // bits going to first word
+	bitsH := n - bitsL       // bits going to second word
+	
+	// First word: insert low bits of value
+	maskL := MaskUpto(uint(bitsL)) << off
+	lowVal := maskedVal << off
+	dst.words[w] = (dst.words[w] &^ maskL) | lowVal
+	
+	// Second word: insert high bits of value
+	maskH := MaskUpto(uint(bitsH))
+	highVal := maskedVal >> bitsL
+	dst.words[w+1] = (dst.words[w+1] &^ maskH) | highVal
 }

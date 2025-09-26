@@ -20,10 +20,6 @@ b := btmp.New().
     ClearRange(110, 4).
     CopyRange(b, 0, 256, 64)
 
-for i := b.NextSetBit(0); i >= 0; i = b.NextSetBit(i+1) {
-    _ = i
-}
-
 g := btmp.NewGrid(16).
     SetRect(3, 2, 5, 4).
     GrowCols(8).
@@ -44,13 +40,11 @@ _ = idx
 * `(*Bitmap) Test(i int) bool`
 * `(*Bitmap) Any() bool`
 * `(*Bitmap) Count() int`
-* `(*Bitmap) NextSetBit(from int) int`
 * `(*Bitmap) SetRange(start, count int) *Bitmap`
 * `(*Bitmap) ClearRange(start, count int) *Bitmap`
 * `(*Bitmap) CopyRange(src *Bitmap, srcStart, dstStart, count int) *Bitmap`
 * `(*Bitmap) EnsureBits(n int) *Bitmap`
-* `(*Bitmap) ReserveCap(n int) *Bitmap`
-* `(*Bitmap) Trim() *Bitmap`
+* `(*Bitmap) AddBits(n int) *Bitmap`
 
 **Grid**
 
