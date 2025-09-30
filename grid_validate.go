@@ -82,12 +82,13 @@ func (g *Grid) validateRectInRows(y, h int) {
 }
 
 // validateSetRect validates complete SetRect operation.
-// Validates params are non-negative, cols != 0 if w > 0, and rect fits in columns.
-// Does NOT validate row bounds since SetRect auto-grows.
+// Validates params are non-negative, cols != 0 if w > 0,
+// and rect fits in both columns and rows.
 func (g *Grid) validateSetRect(x, y, w, h int) {
 	validateRectParams(x, y, w, h)
 	validateColsZero(g.cols, w)
 	g.validateRectInCols(x, w)
+	g.validateRectInRows(y, h)
 }
 
 // validateClearRect validates complete ClearRect operation.

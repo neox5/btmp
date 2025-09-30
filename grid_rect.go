@@ -1,21 +1,15 @@
 package btmp
 
 // setRect sets rectangle to 1 without validation.
-// Internal implementation - auto-grows rows as needed.
+// Internal implementation - no auto-growth, requires in-bounds.
 func (g *Grid) setRect(x, y, w, h int) {
 	if w == 0 || h == 0 {
 		// Empty rectangle, nothing to do
 		return
 	}
 
-	// Auto-grow rows if needed
-	needRows := y + h
-	if needRows > g.Rows() {
-		g.B.ensureBits(needRows * g.cols)
-	}
-
 	// Set each row of the rectangle
-	for row := 0; row < h; row++ {
+	for row := range h {
 		start := (y+row)*g.cols + x
 		g.B.setRange(start, w)
 	}
@@ -30,7 +24,7 @@ func (g *Grid) clearRect(x, y, w, h int) {
 	}
 
 	// Clear each row of the rectangle
-	for row := 0; row < h; row++ {
+	for row := range h {
 		start := (y+row)*g.cols + x
 		g.B.clearRange(start, w)
 	}

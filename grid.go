@@ -93,8 +93,9 @@ func (g *Grid) GrowRows(delta int) *Grid {
 }
 
 // SetRect sets to 1 a rectangle of size w×h at origin (x,y).
-// Auto-grows rows to fit y+h. Panics if x<0, y<0, w<0, h<0, or x+w > Cols.
-// Returns g.
+// All coordinates must be in bounds. Panics if x<0, y<0, w<0, h<0,
+// x+w > Cols, or y+h > Rows.
+// Returns *Grid for chaining.
 func (g *Grid) SetRect(x, y, w, h int) *Grid {
 	g.validateSetRect(x, y, w, h)
 	g.setRect(x, y, w, h)
