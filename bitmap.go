@@ -192,6 +192,18 @@ func (b *Bitmap) CopyRange(src *Bitmap, srcStart, dstStart, count int) *Bitmap {
 	return b
 }
 
+// MoveRange moves count bits from [srcStart, srcStart+count) to [dstStart, dstStart+count).
+// The source range is cleared after copying. Overlap-safe with memmove semantics.
+// In-bounds only for both source and destination ranges.
+// Returns *Bitmap for chaining. Panics on negative inputs, overflow, or out-of-bounds.
+func (b *Bitmap) MoveRange(srcStart, dstStart, count int) *Bitmap {
+	b.validateRange(srcStart, count)
+	b.validateRange(dstStart, count)
+
+	b.moveRange(srcStart, dstStart, count)
+	return b
+}
+
 // SetAll sets all bits in [0, Len()) to 1.
 // Equivalent to SetRange(0, Len()) but optimized for full bitmap operations.
 // Returns *Bitmap for chaining.
