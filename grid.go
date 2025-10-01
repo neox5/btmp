@@ -36,16 +36,6 @@ func NewGridWithSize(cols, rows int) *Grid {
 	}
 }
 
-// NewGridFrom wraps an existing Bitmap. Panics if b is nil or cols < 0.
-func NewGridFrom(b *Bitmap, cols int) *Grid {
-	validateNotNil(b, "b")
-	validateNonNegative(cols, "cols")
-	return &Grid{
-		B:    b,
-		cols: cols,
-	}
-}
-
 // ========================================
 // Accessors
 // ========================================
