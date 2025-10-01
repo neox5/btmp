@@ -30,6 +30,10 @@ type Bitmap struct {
 	tailMask    uint64 // mask for last logical word; 0 if Len()==0; WordMask if Len()%64==0
 }
 
+// ========================================
+// Constructor Functions
+// ========================================
+
 // New returns an empty bitmap sized for n bits (Len==n).
 func New(n uint) *Bitmap {
 	b := &Bitmap{
@@ -40,11 +44,19 @@ func New(n uint) *Bitmap {
 	return b
 }
 
+// ========================================
+// Accessors
+// ========================================
+
 // Len returns the logical length in bits.
 func (b *Bitmap) Len() int { return b.lenBits }
 
 // Words exposes the underlying words slice (length may exceed the logical need).
 func (b *Bitmap) Words() []uint64 { return b.words }
+
+// ========================================
+// Growth Operations
+// ========================================
 
 // EnsureBits grows the logical length to at least n bits. No-op if n <= Len().
 // Returns *Bitmap for chaining. Panics if n < 0.
@@ -69,6 +81,10 @@ func (b *Bitmap) AddBits(n int) *Bitmap {
 	}
 	return b
 }
+
+// ========================================
+// Query Operations
+// ========================================
 
 // Test reports whether bit pos is set. Panics if pos is out of [0, Len()).
 func (b *Bitmap) Test(pos int) bool {
@@ -119,6 +135,10 @@ func (b *Bitmap) Count() int {
 	return sum + bits.OnesCount64(b.words[b.lastWordIdx]&b.tailMask)
 }
 
+// ========================================
+// Single-Bit Mutators
+// ========================================
+
 // SetBit sets bit pos to 1. Panics if pos < 0 or pos >= Len().
 func (b *Bitmap) SetBit(pos int) *Bitmap {
 	validateNonNegative(pos, "pos")
@@ -146,6 +166,10 @@ func (b *Bitmap) FlipBit(pos int) *Bitmap {
 	return b
 }
 
+// ========================================
+// Multi-Bit Mutators
+// ========================================
+
 // SetBits inserts the low n bits of val into the bitmap starting at pos.
 // Only the least significant n bits of val are used; higher bits are ignored.
 // Preserves surrounding bits unchanged. Panics if pos < 0, n <= 0, n > 64, or pos+n > Len().
@@ -160,6 +184,10 @@ func (b *Bitmap) SetBits(pos, n int, val uint64) *Bitmap {
 	b.setBits(pos, n, val)
 	return b
 }
+
+// ========================================
+// Range Mutators
+// ========================================
 
 // SetRange sets bits in [start, start+count) to 1. In-bounds only.
 // Returns *Bitmap for chaining. Panics on negative inputs, overflow, or out-of-bounds.
@@ -204,6 +232,10 @@ func (b *Bitmap) MoveRange(srcStart, dstStart, count int) *Bitmap {
 	return b
 }
 
+// ========================================
+// Bulk Mutators
+// ========================================
+
 // SetAll sets all bits in [0, Len()) to 1.
 // Equivalent to SetRange(0, Len()) but optimized for full bitmap operations.
 // Returns *Bitmap for chaining.
@@ -219,6 +251,10 @@ func (b *Bitmap) ClearAll() *Bitmap {
 	b.clearAll()
 	return b
 }
+
+// ========================================
+// Logical Operations
+// ========================================
 
 // And performs bitwise AND with other bitmap. Both bitmaps must have the same length.
 // Returns *Bitmap for chaining. Panics if other is nil or lengths differ.
@@ -256,6 +292,10 @@ func (b *Bitmap) Not() *Bitmap {
 	b.not()
 	return b
 }
+
+// ========================================
+// Internal Helpers
+// ========================================
 
 // computeCache recomputes cache fields from lenBits only.
 func (b *Bitmap) computeCache() {
