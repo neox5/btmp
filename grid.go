@@ -131,6 +131,8 @@ func (g *Grid) IsFree(x, y, w, h int) bool {
 // Checks if column x+w exists and is free (all zeros) for rows [y, y+h).
 // Panics if rectangle is invalid, out of bounds, or target column doesn't exist.
 func (g *Grid) CanShiftRight(x, y, w, h int) bool {
+	g.validateRect(x, y, w, h)  
+	
 	targetCol := x + w
 	if targetCol >= g.cols {
 		panic("target column out of bounds")
@@ -143,6 +145,8 @@ func (g *Grid) CanShiftRight(x, y, w, h int) bool {
 // Checks if column x-1 exists and is free (all zeros) for rows [y, y+h).
 // Panics if rectangle is invalid, out of bounds, or target column doesn't exist.
 func (g *Grid) CanShiftLeft(x, y, w, h int) bool {
+	g.validateRect(x, y, w, h)  
+	
 	if x == 0 {
 		panic("target column out of bounds")
 	}
@@ -155,6 +159,8 @@ func (g *Grid) CanShiftLeft(x, y, w, h int) bool {
 // Checks if row y-1 exists and is free (all zeros) for columns [x, x+w).
 // Panics if rectangle is invalid, out of bounds, or target row doesn't exist.
 func (g *Grid) CanShiftUp(x, y, w, h int) bool {
+	g.validateRect(x, y, w, h)  
+	
 	if y == 0 {
 		panic("target row out of bounds")
 	}
@@ -167,6 +173,8 @@ func (g *Grid) CanShiftUp(x, y, w, h int) bool {
 // Checks if row y+h exists and is free (all zeros) for columns [x, x+w).
 // Panics if rectangle is invalid, out of bounds, or target row doesn't exist.
 func (g *Grid) CanShiftDown(x, y, w, h int) bool {
+	g.validateRect(x, y, w, h)  
+	
 	targetRow := y + h
 	if targetRow >= g.Rows() {
 		panic("target row out of bounds")
