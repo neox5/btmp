@@ -9,9 +9,9 @@ type Grid struct {
 }
 
 // NewGrid returns a Grid with a new underlying Bitmap and the given column count.
-// Accepts cols == 0.
+// Accepts cols == 0. Panics if cols < 0.
 func NewGrid(cols int) *Grid {
-	validateCols(cols)
+	validateNonNegative(cols, "cols")
 	return &Grid{
 		B:    New(0),
 		cols: cols,
@@ -19,11 +19,11 @@ func NewGrid(cols int) *Grid {
 }
 
 // NewGridWithSize returns a Grid sized to rows*cols bits.
-// Accepts cols == 0 or rows == 0.
+// Accepts cols == 0 or rows == 0. Panics if cols < 0, rows < 0, or size overflows.
 func NewGridWithSize(cols, rows int) *Grid {
-	validateCols(cols)
-	validateRows(rows)
-	validateGridSize(cols, rows)
+	validateNonNegative(cols, "cols")
+	validateNonNegative(rows, "rows")
+	validateGridSizeMax(rows, cols)
 
 	size := cols * rows
 	return &Grid{
@@ -32,10 +32,10 @@ func NewGridWithSize(cols, rows int) *Grid {
 	}
 }
 
-// NewGridFrom wraps an existing Bitmap. Panics if b is nil.
+// NewGridFrom wraps an existing Bitmap. Panics if b is nil or cols < 0.
 func NewGridFrom(b *Bitmap, cols int) *Grid {
-	validateBitmap(b)
-	validateCols(cols)
+	validateNotNil(b, "b")
+	validateNonNegative(cols, "cols")
 	return &Grid{
 		B:    b,
 		cols: cols,
@@ -57,38 +57,45 @@ func (g *Grid) Rows() int {
 
 // Index returns y*Cols + x. Panics on negative x or y.
 func (g *Grid) Index(x, y int) int {
-	validateCoordinate(x, y)
+	validateNonNegative(x, "x")
+	validateNonNegative(y, "y")
 	return y*g.cols + x
 }
 
 // EnsureCols grows Cols to at least cols, repositioning like GrowCols when needed.
-// No-op if cols <= Cols. Returns g.
+// No-op if cols <= Cols. Returns g. Panics if cols < 0.
 func (g *Grid) EnsureCols(cols int) *Grid {
-	validateCols(cols)
+	validateNonNegative(cols, "cols")
 	g.ensureCols(cols)
 	return g
 }
 
 // EnsureRows ensures at least rows rows exist. No repositioning. Returns g.
+// Panics if rows < 0.
 func (g *Grid) EnsureRows(rows int) *Grid {
-	validateRows(rows)
+	validateNonNegative(rows, "rows")
 	g.ensureRows(rows)
 	return g
 }
 
 // GrowCols increases Cols by delta (>0) and repositions existing rows so each
 // cell (x,y) remains at the same coordinates under the new Cols.
-// Newly created columns are zero. Returns g.
+// Newly created columns are zero. Returns g. Panics if delta < 0.
 func (g *Grid) GrowCols(delta int) *Grid {
-	validateDelta(delta)
-	g.growCols(delta)
+	validateNonNegative(delta, "delta")
+	if delta > 0 {
+		g.growCols(delta)
+	}
 	return g
 }
 
 // GrowRows appends delta (>0) empty rows below current content. Returns g.
+// Panics if delta < 0.
 func (g *Grid) GrowRows(delta int) *Grid {
-	validateDelta(delta)
-	g.growRows(delta)
+	validateNonNegative(delta, "delta")
+	if delta > 0 {
+		g.growRows(delta)
+	}
 	return g
 }
 
@@ -97,7 +104,7 @@ func (g *Grid) GrowRows(delta int) *Grid {
 // x+w > Cols, or y+h > Rows.
 // Returns *Grid for chaining.
 func (g *Grid) SetRect(x, y, w, h int) *Grid {
-	g.validateSetRect(x, y, w, h)
+	g.validateRect(x, y, w, h)
 	g.setRect(x, y, w, h)
 	return g
 }
@@ -105,7 +112,7 @@ func (g *Grid) SetRect(x, y, w, h int) *Grid {
 // ClearRect clears to 0 a rectangle of size w×h at origin (x,y).
 // Panics if rectangle exceeds current Rows() or Cols(). Returns g.
 func (g *Grid) ClearRect(x, y, w, h int) *Grid {
-	g.validateClearRect(x, y, w, h)
+	g.validateRect(x, y, w, h)
 	g.clearRect(x, y, w, h)
 	return g
 }

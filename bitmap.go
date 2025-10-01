@@ -49,7 +49,7 @@ func (b *Bitmap) Words() []uint64 { return b.words }
 // EnsureBits grows the logical length to at least n bits. No-op if n <= Len().
 // Returns *Bitmap for chaining. Panics if n < 0.
 func (b *Bitmap) EnsureBits(n int) *Bitmap {
-	validatePosition(n) // reuse for non-negative validation
+	validateNonNegative(n, "n")
 
 	if n > b.lenBits {
 		b.ensureBits(n)
@@ -61,7 +61,7 @@ func (b *Bitmap) EnsureBits(n int) *Bitmap {
 // AddBits grows the logical length by n bits.
 // Returns *Bitmap for chaining. Panics if n < 0.
 func (b *Bitmap) AddBits(n int) *Bitmap {
-	validateCount(n)
+	validateNonNegative(n, "n")
 
 	if n > 0 {
 		b.addBits(n)
@@ -72,7 +72,7 @@ func (b *Bitmap) AddBits(n int) *Bitmap {
 
 // Test reports whether bit pos is set. Panics if pos is out of [0, Len()).
 func (b *Bitmap) Test(pos int) bool {
-	validatePosition(pos)
+	validateNonNegative(pos, "pos")
 	b.validateInBounds(pos)
 
 	w, off := wordIndex(pos)
@@ -85,7 +85,7 @@ func (b *Bitmap) Test(pos int) bool {
 //
 // Example: bitmap 11010110, GetBits(2, 3) returns 101 (bits at positions 2,3,4).
 func (b *Bitmap) GetBits(pos, n int) uint64 {
-	validatePosition(pos)
+	validateNonNegative(pos, "pos")
 	validateWordBits(n)
 	b.validateRange(pos, n)
 
@@ -121,7 +121,7 @@ func (b *Bitmap) Count() int {
 
 // SetBit sets bit pos to 1. Panics if pos < 0 or pos >= Len().
 func (b *Bitmap) SetBit(pos int) *Bitmap {
-	validatePosition(pos)
+	validateNonNegative(pos, "pos")
 	b.validateInBounds(pos)
 
 	b.setBit(pos)
@@ -130,7 +130,7 @@ func (b *Bitmap) SetBit(pos int) *Bitmap {
 
 // ClearBit sets bit pos to 0. Panics if pos < 0 or pos >= Len().
 func (b *Bitmap) ClearBit(pos int) *Bitmap {
-	validatePosition(pos)
+	validateNonNegative(pos, "pos")
 	b.validateInBounds(pos)
 
 	b.clearBit(pos)
@@ -139,7 +139,7 @@ func (b *Bitmap) ClearBit(pos int) *Bitmap {
 
 // FlipBit toggles bit pos. Panics if pos < 0 or pos >= Len().
 func (b *Bitmap) FlipBit(pos int) *Bitmap {
-	validatePosition(pos)
+	validateNonNegative(pos, "pos")
 	b.validateInBounds(pos)
 
 	b.flipBit(pos)
@@ -153,7 +153,7 @@ func (b *Bitmap) FlipBit(pos int) *Bitmap {
 //
 // Example: SetBits(2, 3, 0b101) sets 3 bits starting at position 2 to the pattern 101.
 func (b *Bitmap) SetBits(pos, n int, val uint64) *Bitmap {
-	validatePosition(pos)
+	validateNonNegative(pos, "pos")
 	validateWordBits(n)
 	b.validateRange(pos, n)
 
@@ -183,9 +183,7 @@ func (b *Bitmap) ClearRange(start, count int) *Bitmap {
 // In-bounds only for both src and dst. Overlap-safe with memmove semantics.
 // Returns *Bitmap for chaining. Panics on negative inputs, nil src, or out-of-bounds.
 func (b *Bitmap) CopyRange(src *Bitmap, srcStart, dstStart, count int) *Bitmap {
-	if src == nil {
-		panic("CopyRange: nil source")
-	}
+	validateNotNil(src, "src")
 
 	src.validateRange(srcStart, count)
 	b.validateRange(dstStart, count)
@@ -213,9 +211,7 @@ func (b *Bitmap) ClearAll() *Bitmap {
 // And performs bitwise AND with other bitmap. Both bitmaps must have the same length.
 // Returns *Bitmap for chaining. Panics if other is nil or lengths differ.
 func (b *Bitmap) And(other *Bitmap) *Bitmap {
-	if other == nil {
-		panic("And: nil bitmap")
-	}
+	validateNotNil(other, "other")
 	validateSameLength(b, other)
 
 	b.and(other)
@@ -225,9 +221,7 @@ func (b *Bitmap) And(other *Bitmap) *Bitmap {
 // Or performs bitwise OR with other bitmap. Both bitmaps must have the same length.
 // Returns *Bitmap for chaining. Panics if other is nil or lengths differ.
 func (b *Bitmap) Or(other *Bitmap) *Bitmap {
-	if other == nil {
-		panic("Or: nil bitmap")
-	}
+	validateNotNil(other, "other")
 	validateSameLength(b, other)
 
 	b.or(other)
@@ -237,9 +231,7 @@ func (b *Bitmap) Or(other *Bitmap) *Bitmap {
 // Xor performs bitwise XOR with other bitmap. Both bitmaps must have the same length.
 // Returns *Bitmap for chaining. Panics if other is nil or lengths differ.
 func (b *Bitmap) Xor(other *Bitmap) *Bitmap {
-	if other == nil {
-		panic("Xor: nil bitmap")
-	}
+	validateNotNil(other, "other")
 	validateSameLength(b, other)
 
 	b.xor(other)
