@@ -12,13 +12,12 @@ type Grid struct {
 // Constructor Functions
 // ========================================
 
-// NewGrid returns a Grid with a new underlying Bitmap and the given column count.
-// Accepts cols == 0. Panics if cols < 0.
-func NewGrid(cols int) *Grid {
-	validateNonNegative(cols, "cols")
+// NewGrid returns a Grid with a new empty underlying Bitmap and zero columns.
+// The grid must be configured with GrowCols or EnsureCols before use.
+func NewGrid() *Grid {
 	return &Grid{
 		B:    New(0),
-		cols: cols,
+		cols: 0,
 	}
 }
 
