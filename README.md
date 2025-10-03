@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="logo.png" alt="btmp" width="500"/>
+</div>
+
 # btmp
 
 Compact, growable bitmap for Go. Fast range updates, overlap-safe copies, and a zero-copy row-major grid view.
