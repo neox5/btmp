@@ -294,6 +294,54 @@ func (b *Bitmap) Not() *Bitmap {
 }
 
 // ========================================
+// Print Operations
+// ========================================
+
+// Print formats all bits in [0, Len()) as binary string.
+// Returns empty string if Len() == 0.
+func (b *Bitmap) Print() string {
+	return b.PrintRange(0, b.lenBits)
+}
+
+// PrintRange formats bits in [start, start+count) as binary string.
+// Returns empty string if count == 0.
+// Panics if start < 0, count < 0, or start+count > Len().
+func (b *Bitmap) PrintRange(start, count int) string {
+	b.validateRange(start, count)
+	return b.printRangeFormat(start, count, 2, false, 0, "")
+}
+
+// PrintFormat formats all bits according to format parameters.
+// base: 2 (binary) or 16 (hexadecimal)
+// grouped: insert separators between bit groups
+// groupSize: units per group (bits for base 2, hex digits for base 16)
+// sep: separator string
+// Panics if base not in {2,16} or grouped && groupSize <= 0.
+func (b *Bitmap) PrintFormat(base int, grouped bool, groupSize int, sep string) string {
+	return b.PrintRangeFormat(0, b.lenBits, base, grouped, groupSize, sep)
+}
+
+// PrintRangeFormat formats bits in [start, start+count) with format parameters.
+// base: 2 (binary) or 16 (hexadecimal)
+// grouped: insert separators between bit groups
+// groupSize: units per group (bits for base 2, hex digits for base 16)
+// sep: separator string
+// Panics if start < 0, count < 0, start+count > Len(), base not in {2,16},
+// or grouped && groupSize <= 0.
+func (b *Bitmap) PrintRangeFormat(start, count int, base int, grouped bool, groupSize int, sep string) string {
+	b.validateRange(start, count)
+
+	if base != 2 && base != 16 {
+		panic("base must be 2 or 16")
+	}
+	if grouped && groupSize <= 0 {
+		panic("groupSize must be positive when grouped")
+	}
+
+	return b.printRangeFormat(start, count, base, grouped, groupSize, sep)
+}
+
+// ========================================
 // Internal Helpers
 // ========================================
 

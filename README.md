@@ -34,6 +34,12 @@ idx := g.Index(7, 3)
 bits := b.GetBits(100, 16)
 _ = idx
 _ = bits
+
+// Print bits for inspection
+fmt.Println(b.Print())                              // Binary string
+fmt.Println(b.PrintFormat(16, false, 0, ""))        // Hexadecimal
+fmt.Println(b.PrintFormat(2, true, 8, "_"))         // Binary grouped by 8
+fmt.Println(b.PrintRangeFormat(0, 64, 16, true, 4, " "))  // Hex grouped
 ```
 
 ## API surface (V1)
@@ -69,6 +75,7 @@ Range mutators:
 * `(*Bitmap) SetRange(start, count int) *Bitmap`
 * `(*Bitmap) ClearRange(start, count int) *Bitmap`
 * `(*Bitmap) CopyRange(src *Bitmap, srcStart, dstStart, count int) *Bitmap`
+* `(*Bitmap) MoveRange(srcStart, dstStart, count int) *Bitmap`
 
 Bulk mutators:
 * `(*Bitmap) SetAll() *Bitmap`
@@ -79,6 +86,12 @@ Logical operations:
 * `(*Bitmap) Or(other *Bitmap) *Bitmap`
 * `(*Bitmap) Xor(other *Bitmap) *Bitmap`
 * `(*Bitmap) Not() *Bitmap`
+
+Print operations:
+* `(*Bitmap) Print() string`
+* `(*Bitmap) PrintRange(start, count int) string`
+* `(*Bitmap) PrintFormat(base int, grouped bool, groupSize int, sep string) string`
+* `(*Bitmap) PrintRangeFormat(start, count int, base int, grouped bool, groupSize int, sep string) string`
 
 **Grid**
 
@@ -94,6 +107,15 @@ Logical operations:
 * `(*Grid) EnsureCols(cols int) *Grid`
 * `(*Grid) GrowRows(delta int) *Grid`
 * `(*Grid) EnsureRows(rows int) *Grid`
+* `(*Grid) IsFree(x, y, w, h int) bool`
+* `(*Grid) CanShiftRight(x, y, w, h int) bool`
+* `(*Grid) CanShiftLeft(x, y, w, h int) bool`
+* `(*Grid) CanShiftUp(x, y, w, h int) bool`
+* `(*Grid) CanShiftDown(x, y, w, h int) bool`
+* `(*Grid) ShiftRectRight(x, y, w, h int) *Grid`
+* `(*Grid) ShiftRectLeft(x, y, w, h int) *Grid`
+* `(*Grid) ShiftRectUp(x, y, w, h int) *Grid`
+* `(*Grid) ShiftRectDown(x, y, w, h int) *Grid`
 
 ## License
 
