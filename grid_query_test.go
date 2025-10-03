@@ -8,7 +8,6 @@ import (
 
 // TestGridIsFree validates Grid.IsFree() query operation.
 // Tests:
-//   - Returns true for empty rectangle (w=0 or h=0)
 //   - Returns true when all bits in rectangle are zero
 //   - Returns false when any bit in rectangle is set
 //   - Single cell queries (1x1)
@@ -17,33 +16,6 @@ import (
 //   - Boundary conditions
 //   - Rectangle validation and panic conditions
 func TestGridIsFree(t *testing.T) {
-	t.Run("returns true for empty rectangle width", func(t *testing.T) {
-		g := btmp.NewGridWithSize(10, 10)
-		g.SetRect(0, 0, 10, 10) // Fill entire grid
-
-		if !g.IsFree(5, 5, 0, 3) {
-			t.Error("expected true for zero width rectangle")
-		}
-	})
-
-	t.Run("returns true for empty rectangle height", func(t *testing.T) {
-		g := btmp.NewGridWithSize(10, 10)
-		g.SetRect(0, 0, 10, 10) // Fill entire grid
-
-		if !g.IsFree(5, 5, 3, 0) {
-			t.Error("expected true for zero height rectangle")
-		}
-	})
-
-	t.Run("returns true for both dimensions zero", func(t *testing.T) {
-		g := btmp.NewGridWithSize(10, 10)
-		g.SetRect(0, 0, 10, 10) // Fill entire grid
-
-		if !g.IsFree(5, 5, 0, 0) {
-			t.Error("expected true for zero size rectangle")
-		}
-	})
-
 	t.Run("returns true when all bits are zero", func(t *testing.T) {
 		g := btmp.NewGridWithSize(10, 10)
 		// Don't set any bits
@@ -222,6 +194,26 @@ func TestGridIsFree(t *testing.T) {
 		g.IsFree(5, 5, 3, -1)
 	})
 
+	t.Run("panics on zero width", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected panic for zero width")
+			}
+		}()
+		g := btmp.NewGridWithSize(10, 10)
+		g.IsFree(5, 5, 0, 3)
+	})
+
+	t.Run("panics on zero height", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected panic for zero height")
+			}
+		}()
+		g := btmp.NewGridWithSize(10, 10)
+		g.IsFree(5, 5, 3, 0)
+	})
+
 	t.Run("panics when x+w exceeds cols", func(t *testing.T) {
 		defer func() {
 			if r := recover(); r == nil {
@@ -251,7 +243,6 @@ func TestGridIsFree(t *testing.T) {
 //   - Multi-row shift validation
 //   - Edge case at right boundary (panics)
 //   - Source rectangle bounds validation
-//   - Panics when target column out of bounds
 func TestGridCanShiftRight(t *testing.T) {
 	t.Run("returns true when target column is free", func(t *testing.T) {
 		g := btmp.NewGridWithSize(10, 10)
@@ -264,8 +255,8 @@ func TestGridCanShiftRight(t *testing.T) {
 
 	t.Run("returns false when target column has bit", func(t *testing.T) {
 		g := btmp.NewGridWithSize(10, 10)
-		g.SetRect(2, 3, 3, 4)         // Rectangle at (2,3,3,4)
-		g.B.SetBit(g.Index(5, 4))     // Set bit in target column (x+w=5)
+		g.SetRect(2, 3, 3, 4)     // Rectangle at (2,3,3,4)
+		g.B.SetBit(g.Index(5, 4)) // Set bit in target column (x+w=5)
 
 		if g.CanShiftRight(2, 3, 3, 4) {
 			t.Error("expected false when target column has set bit")
@@ -319,32 +310,24 @@ func TestGridCanShiftRight(t *testing.T) {
 		}
 	})
 
-	t.Run("empty rectangle can shift", func(t *testing.T) {
-		g := btmp.NewGridWithSize(10, 10)
-
-		if !g.CanShiftRight(5, 5, 0, 3) {
-			t.Error("expected true for empty rectangle width")
-		}
-	})
-
-	t.Run("panics when target column out of bounds", func(t *testing.T) {
+	t.Run("panics on zero width", func(t *testing.T) {
 		defer func() {
 			if r := recover(); r == nil {
-				t.Error("expected panic when target column >= cols")
+				t.Error("expected panic for zero width")
 			}
 		}()
 		g := btmp.NewGridWithSize(10, 10)
-		g.CanShiftRight(5, 5, 5, 3) // x+w = 10, out of bounds
+		g.CanShiftRight(5, 5, 0, 3)
 	})
 
-	t.Run("panics at exact right edge", func(t *testing.T) {
+	t.Run("panics on zero height", func(t *testing.T) {
 		defer func() {
 			if r := recover(); r == nil {
-				t.Error("expected panic at right edge")
+				t.Error("expected panic for zero height")
 			}
 		}()
 		g := btmp.NewGridWithSize(10, 10)
-		g.CanShiftRight(0, 0, 10, 5) // x+w = 10
+		g.CanShiftRight(5, 5, 3, 0)
 	})
 
 	t.Run("panics on invalid source rectangle", func(t *testing.T) {
@@ -367,6 +350,7 @@ func TestGridCanShiftRight(t *testing.T) {
 //   - Edge case at left boundary (panics)
 //   - Source rectangle bounds validation
 //   - Panics when target column out of bounds
+//   - Panics on zero width or height
 func TestGridCanShiftLeft(t *testing.T) {
 	t.Run("returns true when target column is free", func(t *testing.T) {
 		g := btmp.NewGridWithSize(10, 10)
@@ -434,22 +418,24 @@ func TestGridCanShiftLeft(t *testing.T) {
 		}
 	})
 
-	t.Run("empty rectangle can shift", func(t *testing.T) {
-		g := btmp.NewGridWithSize(10, 10)
-
-		if !g.CanShiftLeft(5, 5, 0, 3) {
-			t.Error("expected true for empty rectangle width")
-		}
-	})
-
-	t.Run("panics when at left edge", func(t *testing.T) {
+	t.Run("panics on zero width", func(t *testing.T) {
 		defer func() {
 			if r := recover(); r == nil {
-				t.Error("expected panic at left edge (x=0)")
+				t.Error("expected panic for zero width")
 			}
 		}()
 		g := btmp.NewGridWithSize(10, 10)
-		g.CanShiftLeft(0, 5, 3, 3) // x=0, cannot shift left
+		g.CanShiftLeft(5, 5, 0, 3)
+	})
+
+	t.Run("panics on zero height", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected panic for zero height")
+			}
+		}()
+		g := btmp.NewGridWithSize(10, 10)
+		g.CanShiftLeft(5, 5, 3, 0)
 	})
 
 	t.Run("panics on invalid source rectangle x bounds", func(t *testing.T) {
@@ -492,6 +478,7 @@ func TestGridCanShiftLeft(t *testing.T) {
 //   - Edge case at top boundary (panics)
 //   - Source rectangle bounds validation
 //   - Panics when target row out of bounds
+//   - Panics on zero width or height
 func TestGridCanShiftUp(t *testing.T) {
 	t.Run("returns true when target row is free", func(t *testing.T) {
 		g := btmp.NewGridWithSize(10, 10)
@@ -559,22 +546,24 @@ func TestGridCanShiftUp(t *testing.T) {
 		}
 	})
 
-	t.Run("empty rectangle can shift", func(t *testing.T) {
-		g := btmp.NewGridWithSize(10, 10)
-
-		if !g.CanShiftUp(5, 5, 3, 0) {
-			t.Error("expected true for empty rectangle height")
-		}
-	})
-
-	t.Run("panics when at top edge", func(t *testing.T) {
+	t.Run("panics on zero width", func(t *testing.T) {
 		defer func() {
 			if r := recover(); r == nil {
-				t.Error("expected panic at top edge (y=0)")
+				t.Error("expected panic for zero width")
 			}
 		}()
 		g := btmp.NewGridWithSize(10, 10)
-		g.CanShiftUp(5, 0, 3, 3) // y=0, cannot shift up
+		g.CanShiftUp(5, 5, 0, 3)
+	})
+
+	t.Run("panics on zero height", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected panic for zero height")
+			}
+		}()
+		g := btmp.NewGridWithSize(10, 10)
+		g.CanShiftUp(5, 5, 3, 0)
 	})
 
 	t.Run("panics on invalid source rectangle x bounds", func(t *testing.T) {
@@ -617,6 +606,7 @@ func TestGridCanShiftUp(t *testing.T) {
 //   - Edge case at bottom boundary (panics)
 //   - Source rectangle bounds validation
 //   - Panics when target row out of bounds
+//   - Panics on zero width or height
 func TestGridCanShiftDown(t *testing.T) {
 	t.Run("returns true when target row is free", func(t *testing.T) {
 		g := btmp.NewGridWithSize(10, 10)
@@ -684,32 +674,24 @@ func TestGridCanShiftDown(t *testing.T) {
 		}
 	})
 
-	t.Run("empty rectangle can shift", func(t *testing.T) {
-		g := btmp.NewGridWithSize(10, 10)
-
-		if !g.CanShiftDown(5, 5, 3, 0) {
-			t.Error("expected true for empty rectangle height")
-		}
-	})
-
-	t.Run("panics when target row out of bounds", func(t *testing.T) {
+	t.Run("panics on zero width", func(t *testing.T) {
 		defer func() {
 			if r := recover(); r == nil {
-				t.Error("expected panic when target row >= rows")
+				t.Error("expected panic for zero width")
 			}
 		}()
 		g := btmp.NewGridWithSize(10, 10)
-		g.CanShiftDown(5, 5, 3, 5) // y+h = 10, out of bounds
+		g.CanShiftDown(5, 5, 0, 3)
 	})
 
-	t.Run("panics at exact bottom edge", func(t *testing.T) {
+	t.Run("panics on zero height", func(t *testing.T) {
 		defer func() {
 			if r := recover(); r == nil {
-				t.Error("expected panic at bottom edge")
+				t.Error("expected panic for zero height")
 			}
 		}()
 		g := btmp.NewGridWithSize(10, 10)
-		g.CanShiftDown(0, 0, 5, 10) // y+h = 10
+		g.CanShiftDown(5, 5, 3, 0)
 	})
 
 	t.Run("panics on invalid source rectangle", func(t *testing.T) {
