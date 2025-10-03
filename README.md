@@ -47,7 +47,7 @@ fmt.Println(b.PrintRangeFormat(0, 64, 16, true, 4, " "))  // Hex grouped
 fmt.Println(g.Print())                              // Grid visualization
 ```
 
-## API surface (V1)
+## API surface
 
 **Bitmap**
 
