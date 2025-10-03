@@ -6,15 +6,7 @@ import (
 	"github.com/neox5/btmp"
 )
 
-// TestGridIsFree validates Grid.IsFree() query operation.
-// Tests:
-//   - Returns true when all bits in rectangle are zero
-//   - Returns false when any bit in rectangle is set
-//   - Single cell queries (1x1)
-//   - Full row and column queries
-//   - Multi-row/column rectangles
-//   - Boundary conditions
-//   - Rectangle validation and panic conditions
+// TestGridIsFree validates Grid.IsFree() query operation behavior.
 func TestGridIsFree(t *testing.T) {
 	t.Run("returns true when all bits are zero", func(t *testing.T) {
 		g := btmp.NewGridWithSize(10, 10)
@@ -235,14 +227,7 @@ func TestGridIsFree(t *testing.T) {
 	})
 }
 
-// TestGridCanShiftRight validates Grid.CanShiftRight() query operation.
-// Tests:
-//   - Returns true when target column exists and is free
-//   - Returns false when target column has set bits
-//   - Single row shift validation
-//   - Multi-row shift validation
-//   - Edge case at right boundary (panics)
-//   - Source rectangle bounds validation
+// TestGridCanShiftRight validates Grid.CanShiftRight() query operation behavior.
 func TestGridCanShiftRight(t *testing.T) {
 	t.Run("returns true when target column is free", func(t *testing.T) {
 		g := btmp.NewGridWithSize(10, 10)
@@ -341,16 +326,7 @@ func TestGridCanShiftRight(t *testing.T) {
 	})
 }
 
-// TestGridCanShiftLeft validates Grid.CanShiftLeft() query operation.
-// Tests:
-//   - Returns true when target column exists and is free
-//   - Returns false when target column has set bits
-//   - Single row shift validation
-//   - Multi-row shift validation
-//   - Edge case at left boundary (panics)
-//   - Source rectangle bounds validation
-//   - Panics when target column out of bounds
-//   - Panics on zero width or height
+// TestGridCanShiftLeft validates Grid.CanShiftLeft() query operation behavior.
 func TestGridCanShiftLeft(t *testing.T) {
 	t.Run("returns true when target column is free", func(t *testing.T) {
 		g := btmp.NewGridWithSize(10, 10)
@@ -469,16 +445,7 @@ func TestGridCanShiftLeft(t *testing.T) {
 	})
 }
 
-// TestGridCanShiftUp validates Grid.CanShiftUp() query operation.
-// Tests:
-//   - Returns true when target row exists and is free
-//   - Returns false when target row has set bits
-//   - Single column shift validation
-//   - Multi-column shift validation
-//   - Edge case at top boundary (panics)
-//   - Source rectangle bounds validation
-//   - Panics when target row out of bounds
-//   - Panics on zero width or height
+// TestGridCanShiftUp validates Grid.CanShiftUp() query operation behavior.
 func TestGridCanShiftUp(t *testing.T) {
 	t.Run("returns true when target row is free", func(t *testing.T) {
 		g := btmp.NewGridWithSize(10, 10)
@@ -597,16 +564,7 @@ func TestGridCanShiftUp(t *testing.T) {
 	})
 }
 
-// TestGridCanShiftDown validates Grid.CanShiftDown() query operation.
-// Tests:
-//   - Returns true when target row exists and is free
-//   - Returns false when target row has set bits
-//   - Single column shift validation
-//   - Multi-column shift validation
-//   - Edge case at bottom boundary (panics)
-//   - Source rectangle bounds validation
-//   - Panics when target row out of bounds
-//   - Panics on zero width or height
+// TestGridCanShiftDown validates Grid.CanShiftDown() query operation behavior.
 func TestGridCanShiftDown(t *testing.T) {
 	t.Run("returns true when target row is free", func(t *testing.T) {
 		g := btmp.NewGridWithSize(10, 10)

@@ -7,12 +7,6 @@ import (
 )
 
 // TestNewGridWithSize validates NewGridWithSize constructor behavior.
-// Tests:
-//   - Creates grid with exact rows×cols bits
-//   - Zero rows/cols accepted
-//   - Negative values panic
-//   - Overflow detection (rows * cols < 0)
-//   - Bitmap length matches rows×cols
 func TestNewGridWithSize(t *testing.T) {
 	t.Run("creates grid with specified dimensions", func(t *testing.T) {
 		g := btmp.NewGridWithSize(10, 5)
@@ -100,9 +94,6 @@ func TestNewGridWithSize(t *testing.T) {
 }
 
 // TestGridCols validates Grid.Cols() accessor behavior.
-// Tests:
-//   - Returns correct column count for initialized grid
-//   - Returns 0 for empty grid
 func TestGridCols(t *testing.T) {
 	t.Run("returns correct column count", func(t *testing.T) {
 		g := btmp.NewGridWithSize(10, 5)
@@ -120,10 +111,6 @@ func TestGridCols(t *testing.T) {
 }
 
 // TestGridRows validates Grid.Rows() accessor behavior.
-// Tests:
-//   - Returns correct row count for initialized grid
-//   - Returns 0 for empty grid
-//   - Returns 0 when cols is 0
 func TestGridRows(t *testing.T) {
 	t.Run("returns correct row count", func(t *testing.T) {
 		g := btmp.NewGridWithSize(10, 5)
@@ -148,11 +135,6 @@ func TestGridRows(t *testing.T) {
 }
 
 // TestGridIndex validates Grid.Index() coordinate conversion.
-// Tests:
-//   - Correct row-major index calculation (y*cols + x)
-//   - Index(0, 0) returns 0
-//   - Panics on negative x
-//   - Panics on negative y
 func TestGridIndex(t *testing.T) {
 	t.Run("calculates correct row-major index", func(t *testing.T) {
 		g := btmp.NewGridWithSize(10, 5)

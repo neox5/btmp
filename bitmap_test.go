@@ -7,12 +7,6 @@ import (
 )
 
 // TestNew validates New constructor behavior.
-// Tests:
-//   - Creates bitmap with exact n bits (Len==n)
-//   - Zero size accepted (n==0)
-//   - Bitmap length matches constructor parameter
-//   - All bits initialized to zero
-//   - Underlying words slice sized correctly (ceil(n/64))
 func TestNew(t *testing.T) {
 	t.Run("creates bitmap with exact n bits", func(t *testing.T) {
 		b := btmp.New(100)
@@ -72,10 +66,6 @@ func TestNew(t *testing.T) {
 }
 
 // TestBitmapLen validates Bitmap.Len() accessor behavior.
-// Tests:
-//   - Returns correct length for initialized bitmap
-//   - Returns 0 for empty bitmap
-//   - Length matches constructor parameter
 func TestBitmapLen(t *testing.T) {
 	t.Run("returns correct length for initialized bitmap", func(t *testing.T) {
 		tests := []uint{1, 63, 64, 65, 100, 128, 1000}
@@ -104,10 +94,6 @@ func TestBitmapLen(t *testing.T) {
 }
 
 // TestBitmapWords validates Bitmap.Words() accessor behavior.
-// Tests:
-//   - Returns underlying words slice
-//   - Slice length matches calculated word count ceil(n/64)
-//   - Words slice correctly sized for various bit counts
 func TestBitmapWords(t *testing.T) {
 	t.Run("returns underlying words slice", func(t *testing.T) {
 		b := btmp.New(64)
@@ -157,12 +143,6 @@ func TestBitmapWords(t *testing.T) {
 }
 
 // TestBitmapTest validates Bitmap.Test() query operation.
-// Tests:
-//   - Returns false for unset bit
-//   - Returns true for set bit
-//   - Works at word boundaries (positions 0, 63, 64, 127)
-//   - Panics on negative position
-//   - Panics on position >= Len()
 func TestBitmapTest(t *testing.T) {
 	t.Run("returns false for unset bit", func(t *testing.T) {
 		b := btmp.New(100)
@@ -238,17 +218,6 @@ func TestBitmapTest(t *testing.T) {
 }
 
 // TestBitmapGetBits validates Bitmap.GetBits() query operation.
-// Tests:
-//   - Extracts n bits starting from pos, returned right-aligned
-//   - Single word aligned read (fast path: n=64, pos%64==0)
-//   - Single word unaligned read
-//   - Cross-word read spanning exactly two words
-//   - Full word read (n=64)
-//   - Partial word reads (various n values)
-//   - Panics on pos < 0
-//   - Panics on n <= 0
-//   - Panics on n > 64
-//   - Panics on pos+n > Len()
 func TestBitmapGetBits(t *testing.T) {
 	t.Run("extracts bits right-aligned", func(t *testing.T) {
 		b := btmp.New(100)
@@ -265,7 +234,7 @@ func TestBitmapGetBits(t *testing.T) {
 	t.Run("single word aligned read fast path", func(t *testing.T) {
 		b := btmp.New(128)
 		// Set all bits in first word
-		for i := 0; i < 64; i++ {
+		for i := range 64 {
 			b.SetBit(i)
 		}
 
@@ -397,14 +366,6 @@ func TestBitmapGetBits(t *testing.T) {
 }
 
 // TestBitmapAny validates Bitmap.Any() query operation.
-// Tests:
-//   - Returns false for empty bitmap (Len==0)
-//   - Returns false when all bits are clear
-//   - Returns true when at least one bit is set
-//   - Detects set bit in first word
-//   - Detects set bit in middle word
-//   - Detects set bit in last partial word
-//   - Properly masks last word
 func TestBitmapAny(t *testing.T) {
 	t.Run("returns false for empty bitmap", func(t *testing.T) {
 		b := btmp.New(0)
@@ -472,14 +433,6 @@ func TestBitmapAny(t *testing.T) {
 }
 
 // TestBitmapCount validates Bitmap.Count() query operation.
-// Tests:
-//   - Returns 0 for empty bitmap (Len==0)
-//   - Returns 0 when all bits are clear
-//   - Counts single set bit correctly
-//   - Counts multiple set bits across multiple words
-//   - Counts all bits set (full bitmap)
-//   - Handles last partial word masking correctly
-//   - Accurate count for various patterns
 func TestBitmapCount(t *testing.T) {
 	t.Run("returns 0 for empty bitmap", func(t *testing.T) {
 		b := btmp.New(0)
@@ -576,7 +529,7 @@ func TestBitmapCount(t *testing.T) {
 	t.Run("counts dense pattern", func(t *testing.T) {
 		b := btmp.New(128)
 		// Set first 100 bits
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			b.SetBit(i)
 		}
 		if b.Count() != 100 {

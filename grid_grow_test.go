@@ -7,12 +7,6 @@ import (
 )
 
 // TestGridEnsureCols validates Grid.EnsureCols() behavior.
-// Tests:
-//   - No-op when cols <= current Cols()
-//   - Grows columns and repositions existing data
-//   - Grows from zero columns
-//   - Validates negative input panics
-//   - Returns *Grid for chaining
 func TestGridEnsureCols(t *testing.T) {
 	t.Run("no-op when cols <= current", func(t *testing.T) {
 		g := btmp.NewGridWithSize(10, 5)

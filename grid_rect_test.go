@@ -7,16 +7,6 @@ import (
 )
 
 // TestGridShiftRectRight validates Grid.ShiftRectRight() shift operation.
-// Tests:
-//   - Valid shift with free target column
-//   - Shift clears leftmost column of source
-//   - Shift preserves rectangle data
-//   - Multiple consecutive shifts
-//   - Edge case shifting to rightmost column
-//   - Panics when target column occupied
-//   - Panics when target column out of bounds
-//   - Panics on invalid source rectangle
-//   - Returns *Grid for chaining
 func TestGridShiftRectRight(t *testing.T) {
 	t.Run("valid shift with free target column", func(t *testing.T) {
 		g := btmp.NewGridWithSize(10, 10)
@@ -264,16 +254,6 @@ func TestGridShiftRectRight(t *testing.T) {
 }
 
 // TestGridShiftRectLeft validates Grid.ShiftRectLeft() shift operation.
-// Tests:
-//   - Valid shift with free target column
-//   - Shift clears rightmost column of source
-//   - Shift preserves rectangle data
-//   - Multiple consecutive shifts
-//   - Edge case shifting to leftmost column
-//   - Panics when target column occupied
-//   - Panics at left edge (x=0)
-//   - Panics on invalid source rectangle
-//   - Returns *Grid for chaining
 func TestGridShiftRectLeft(t *testing.T) {
 	t.Run("valid shift with free target column", func(t *testing.T) {
 		g := btmp.NewGridWithSize(10, 10)
@@ -521,16 +501,6 @@ func TestGridShiftRectLeft(t *testing.T) {
 }
 
 // TestGridShiftRectUp validates Grid.ShiftRectUp() shift operation.
-// Tests:
-//   - Valid shift with free target row
-//   - Shift clears bottom row of source
-//   - Shift preserves rectangle data
-//   - Multiple consecutive shifts
-//   - Edge case shifting to topmost row
-//   - Panics when target row occupied
-//   - Panics at top edge (y=0)
-//   - Panics on invalid source rectangle
-//   - Returns *Grid for chaining
 func TestGridShiftRectUp(t *testing.T) {
 	t.Run("valid shift with free target row", func(t *testing.T) {
 		g := btmp.NewGridWithSize(10, 10)
@@ -778,16 +748,6 @@ func TestGridShiftRectUp(t *testing.T) {
 }
 
 // TestGridShiftRectDown validates Grid.ShiftRectDown() shift operation.
-// Tests:
-//   - Valid shift with free target row
-//   - Shift clears top row of source
-//   - Shift preserves rectangle data
-//   - Multiple consecutive shifts
-//   - Edge case shifting to bottommost row
-//   - Panics when target row occupied
-//   - Panics when target row out of bounds
-//   - Panics on invalid source rectangle
-//   - Returns *Grid for chaining
 func TestGridShiftRectDown(t *testing.T) {
 	t.Run("valid shift with free target row", func(t *testing.T) {
 		g := btmp.NewGridWithSize(10, 10)
