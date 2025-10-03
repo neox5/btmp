@@ -25,7 +25,7 @@ b := btmp.New(0).
 b2 := btmp.New(8192).SetRange(200, 50)
 b.And(b2).Or(b2).Xor(b2).Not()
 
-g := btmp.NewGrid(16).
+g := btmp.NewGridWithSize(16, 10).
     SetRect(3, 2, 5, 4).
     GrowCols(8).
     GrowRows(10)
@@ -40,6 +40,7 @@ fmt.Println(b.Print())                              // Binary string
 fmt.Println(b.PrintFormat(16, false, 0, ""))        // Hexadecimal
 fmt.Println(b.PrintFormat(2, true, 8, "_"))         // Binary grouped by 8
 fmt.Println(b.PrintRangeFormat(0, 64, 16, true, 4, " "))  // Hex grouped
+fmt.Println(g.Print())                              // Grid visualization
 ```
 
 ## API surface (V1)
@@ -53,7 +54,7 @@ Accessors:
 * `(*Bitmap) Len() int`
 * `(*Bitmap) Words() []uint64`
 
-Growth mutators:
+Growth operations:
 * `(*Bitmap) EnsureBits(n int) *Bitmap`
 * `(*Bitmap) AddBits(n int) *Bitmap`
 
@@ -95,27 +96,38 @@ Print operations:
 
 **Grid**
 
-* `NewGrid(cols int) *Grid`
+Constructors:
+* `NewGrid() *Grid`
 * `NewGridWithSize(cols, rows int) *Grid`
-* `NewGridFrom(b *Bitmap, cols int) *Grid`
-* `(*Grid) Index(x, y int) int`
+
+Accessors:
 * `(*Grid) Cols() int`
 * `(*Grid) Rows() int`
-* `(*Grid) SetRect(x, y, w, h int) *Grid`
-* `(*Grid) ClearRect(x, y, w, h int) *Grid`
-* `(*Grid) GrowCols(delta int) *Grid`
+* `(*Grid) Index(x, y int) int`
+
+Growth operations:
 * `(*Grid) EnsureCols(cols int) *Grid`
-* `(*Grid) GrowRows(delta int) *Grid`
 * `(*Grid) EnsureRows(rows int) *Grid`
+* `(*Grid) GrowCols(delta int) *Grid`
+* `(*Grid) GrowRows(delta int) *Grid`
+
+Query operations:
 * `(*Grid) IsFree(x, y, w, h int) bool`
 * `(*Grid) CanShiftRight(x, y, w, h int) bool`
 * `(*Grid) CanShiftLeft(x, y, w, h int) bool`
 * `(*Grid) CanShiftUp(x, y, w, h int) bool`
 * `(*Grid) CanShiftDown(x, y, w, h int) bool`
+
+Rectangle mutators:
+* `(*Grid) SetRect(x, y, w, h int) *Grid`
+* `(*Grid) ClearRect(x, y, w, h int) *Grid`
 * `(*Grid) ShiftRectRight(x, y, w, h int) *Grid`
 * `(*Grid) ShiftRectLeft(x, y, w, h int) *Grid`
 * `(*Grid) ShiftRectUp(x, y, w, h int) *Grid`
 * `(*Grid) ShiftRectDown(x, y, w, h int) *Grid`
+
+Print operations:
+* `(*Grid) Print() string`
 
 ## License
 
