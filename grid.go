@@ -260,3 +260,21 @@ func (g *Grid) ShiftRectDown(x, y, w, h int) *Grid {
 	g.shiftRectDown(x, y, w, h)
 	return g
 }
+
+// ========================================
+// Print Operations
+// ========================================
+
+// Print formats the grid as a coordinate-labeled visualization.
+// Each row is prefixed with its row number, and column indices are shown at the top.
+// Uses '.' for zero bits and '#' for set bits.
+// Returns empty string if grid has no rows or columns.
+//
+// Example output for a 5x3 grid with bits set at (1,0) and (3,1):
+//   0 1 2 3 4
+// 0 . # . . .
+// 1 . . . # .
+// 2 . . . . .
+func (g *Grid) Print() string {
+	return g.print()
+}
