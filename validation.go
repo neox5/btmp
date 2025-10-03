@@ -8,9 +8,17 @@ func validateNonNegative(value int, name string) {
 	}
 }
 
+// validatePositive validates that value is positive (> 0).
+// Panics if value <= 0.
+func validatePositive(value int, name string) {
+	if value <= 0 {
+		panic(name + " must be positive")
+	}
+}
+
 // validateNotNil validates that pointer is not nil.
 // Panics if ptr is nil.
-func validateNotNil(ptr interface{}, name string) {
+func validateNotNil(ptr any, name string) {
 	if ptr == nil {
 		panic(name + " must not be nil")
 	}

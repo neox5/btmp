@@ -30,6 +30,66 @@ func (g *Grid) clearRect(x, y, w, h int) {
 	}
 }
 
+// isFree reports whether the specified rectangle contains only zeros.
+// Internal helper - no validation, assumes valid bounds.
+func (g *Grid) isFree(x, y, w, h int) bool {
+	// Check each row of the rectangle
+	for row := range h {
+		start := (y+row)*g.cols + x
+		// Check if any bit is set in this row segment
+		for i := range w {
+			if g.B.Test(start + i) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// canShiftRight reports whether rectangle can shift right.
+// Checks if column x+w is free for rows [y, y+h).
+// Internal helper - no validation, assumes valid bounds.
+func (g *Grid) canShiftRight(x, y, w, h int) bool {
+	targetCol := x + w
+	if targetCol >= g.cols {
+		return false
+	}
+	return g.isFree(targetCol, y, 1, h)
+}
+
+// canShiftLeft reports whether rectangle can shift left.
+// Checks if column x-1 is free for rows [y, y+h).
+// Internal helper - no validation, assumes valid bounds.
+func (g *Grid) canShiftLeft(x, y, w, h int) bool {
+	if x == 0 {
+		return false
+	}
+	targetCol := x - 1
+	return g.isFree(targetCol, y, 1, h)
+}
+
+// canShiftUp reports whether rectangle can shift up.
+// Checks if row y-1 is free for columns [x, x+w).
+// Internal helper - no validation, assumes valid bounds.
+func (g *Grid) canShiftUp(x, y, w, h int) bool {
+	if y == 0 {
+		return false
+	}
+	targetRow := y - 1
+	return g.isFree(x, targetRow, w, 1)
+}
+
+// canShiftDown reports whether rectangle can shift down.
+// Checks if row y+h is free for columns [x, x+w).
+// Internal helper - no validation, assumes valid bounds.
+func (g *Grid) canShiftDown(x, y, w, h int) bool {
+	targetRow := y + h
+	if targetRow >= g.Rows() {
+		return false
+	}
+	return g.isFree(x, targetRow, w, 1)
+}
+
 // shiftRectRight shifts a rectangle one column to the right.
 // Moves bits from [x,y,w,h) to [x+1,y,w,h).
 // The leftmost column (x) is cleared.

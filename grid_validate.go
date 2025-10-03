@@ -18,8 +18,8 @@ func (g *Grid) validateCoordinate(x, y int) {
 // Panics if x < 0, y < 0, w < 0, h < 0, x+w > g.Cols(), or y+h > g.Rows().
 func (g *Grid) validateRect(x, y, w, h int) {
 	g.validateCoordinate(x, y)
-	validateNonNegative(w, "w")
-	validateNonNegative(h, "h")
+	validatePositive(w, "w")
+	validatePositive(h, "h")
 	if x+w > g.cols {
 		panic("rectangle exceeds columns")
 	}
