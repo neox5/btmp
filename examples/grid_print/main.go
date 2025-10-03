@@ -7,19 +7,23 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Empty Grid ===\n")
+	fmt.Println("=== Empty Grid ===")
+	fmt.Println()
 	g0 := btmp.NewGridWithSize(0, 0)
 	fmt.Println(g0.Print())
-	fmt.Println("(empty output expected)\n")
+	fmt.Println("(empty output expected)")
+	fmt.Println()
 
-	fmt.Println("=== Small Grid (5x3) ===\n")
+	fmt.Println("=== Small Grid (5x3) ===")
+	fmt.Println()
 	g1 := btmp.NewGridWithSize(5, 3)
 	g1.SetRect(1, 0, 1, 1) // (1,0)
 	g1.SetRect(3, 1, 1, 1) // (3,1)
 	fmt.Println(g1.Print())
 	fmt.Println()
 
-	fmt.Println("=== Single Row ===\n")
+	fmt.Println("=== Single Row ===")
+	fmt.Println()
 	g2 := btmp.NewGridWithSize(8, 1)
 	g2.SetRect(0, 0, 1, 1) // (0,0)
 	g2.SetRect(3, 0, 1, 1) // (3,0)
@@ -27,7 +31,8 @@ func main() {
 	fmt.Println(g2.Print())
 	fmt.Println()
 
-	fmt.Println("=== Single Column ===\n")
+	fmt.Println("=== Single Column ===")
+	fmt.Println()
 	g3 := btmp.NewGridWithSize(1, 8)
 	g3.SetRect(0, 1, 1, 1) // (0,1)
 	g3.SetRect(0, 4, 1, 1) // (0,4)
@@ -35,7 +40,8 @@ func main() {
 	fmt.Println(g3.Print())
 	fmt.Println()
 
-	fmt.Println("=== 10x10 Grid with Pattern ===\n")
+	fmt.Println("=== 10x10 Grid with Pattern ===")
+	fmt.Println()
 	g4 := btmp.NewGridWithSize(10, 10)
 	// Diagonal
 	for i := range 10 {
@@ -49,7 +55,8 @@ func main() {
 	fmt.Println(g4.Print())
 	fmt.Println()
 
-	fmt.Println("=== Large Grid (20x15) ===\n")
+	fmt.Println("=== Large Grid (20x15) ===")
+	fmt.Println()
 	g5 := btmp.NewGridWithSize(20, 15)
 	// Fill some rectangles
 	g5.SetRect(2, 2, 5, 3)
@@ -59,7 +66,8 @@ func main() {
 	fmt.Println(g5.Print())
 	fmt.Println()
 
-	fmt.Println("=== Full Grid ===\n")
+	fmt.Println("=== Full Grid ===")
+	fmt.Println()
 	g6 := btmp.NewGridWithSize(6, 4)
 	g6.SetRect(0, 0, 6, 4) // Fill entire grid
 	fmt.Println(g6.Print())

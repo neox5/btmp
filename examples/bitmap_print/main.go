@@ -7,7 +7,8 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Basic Binary Printing ===\n")
+	fmt.Println("=== Basic Binary Printing ===")
+	fmt.Println()
 
 	// Small bitmap
 	b1 := btmp.New(16)
@@ -22,7 +23,8 @@ func main() {
 	b2.SetRange(10, 20)
 	fmt.Printf("Bits [10, 30) set:\n%s\n\n", b2.PrintRange(0, 40))
 
-	fmt.Println("=== Hexadecimal Printing ===\n")
+	fmt.Println("=== Hexadecimal Printing ===")
+	fmt.Println()
 
 	// Hex format
 	b3 := btmp.New(16)
@@ -36,7 +38,8 @@ func main() {
 	fmt.Printf("0xABC (12 bits) in binary:\n%s\n", b4.Print())
 	fmt.Printf("0xABC (12 bits) in hex:\n%s\n\n", b4.PrintFormat(16, false, 0, ""))
 
-	fmt.Println("=== Grouped Binary ===\n")
+	fmt.Println("=== Grouped Binary ===")
+	fmt.Println()
 
 	// Binary grouped by 4
 	b5 := btmp.New(16)
@@ -48,7 +51,8 @@ func main() {
 	b6.SetBits(0, 32, 0xDEADBEEF)
 	fmt.Printf("0xDEADBEEF grouped by 8 bits:\n%s\n\n", b6.PrintFormat(2, true, 8, " "))
 
-	fmt.Println("=== Grouped Hexadecimal ===\n")
+	fmt.Println("=== Grouped Hexadecimal ===")
+	fmt.Println()
 
 	// Hex grouped by 2
 	b7 := btmp.New(32)
@@ -61,7 +65,8 @@ func main() {
 	b8.SetAll()
 	fmt.Printf("64 bits all set, hex grouped by 4:\n%s\n\n", b8.PrintFormat(16, true, 4, "_"))
 
-	fmt.Println("=== Large Ranges (> 64 bits) ===\n")
+	fmt.Println("=== Large Ranges (> 64 bits) ===")
+	fmt.Println()
 
 	// Large binary
 	b9 := btmp.New(130)
@@ -81,7 +86,8 @@ func main() {
 	fmt.Printf("96 bits all set in hex:\n%s\n", b11.PrintFormat(16, false, 0, ""))
 	fmt.Printf("96 bits all set in hex, grouped by 4:\n%s\n\n", b11.PrintFormat(16, true, 4, " "))
 
-	fmt.Println("=== Range Formatting ===\n")
+	fmt.Println("=== Range Formatting ===")
+	fmt.Println()
 
 	// Extract and format specific range
 	b12 := btmp.New(200)
