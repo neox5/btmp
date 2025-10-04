@@ -2,26 +2,26 @@ package btmp
 
 import "fmt"
 
-// validateCoordinate validates that x and y are non-negative and within grid bounds.
-// Returns ValidationError if x < 0, y < 0, x >= g.Cols(), or y >= g.Rows().
-func (g *Grid) validateCoordinate(x, y int) error {
-	if err := validateNonNegative(x, "x"); err != nil {
+// validateCoordinate validates that c and r are non-negative and within grid bounds.
+// Returns ValidationError if c < 0, r < 0, c >= g.Cols(), or r >= g.Rows().
+func (g *Grid) validateCoordinate(c, r int) error {
+	if err := validateNonNegative(c, "c"); err != nil {
 		return err
 	}
-	if err := validateNonNegative(y, "y"); err != nil {
+	if err := validateNonNegative(r, "r"); err != nil {
 		return err
 	}
-	if x >= g.cols {
+	if c >= g.cols {
 		return &ValidationError{
-			Field:   "x",
-			Value:   fmt.Sprintf("x=%d, cols=%d", x, g.cols),
+			Field:   "c",
+			Value:   fmt.Sprintf("c=%d, cols=%d", c, g.cols),
 			Message: "out of bounds",
 		}
 	}
-	if y >= g.Rows() {
+	if r >= g.Rows() {
 		return &ValidationError{
-			Field:   "y",
-			Value:   fmt.Sprintf("y=%d, rows=%d", y, g.Rows()),
+			Field:   "r",
+			Value:   fmt.Sprintf("r=%d, rows=%d", r, g.Rows()),
 			Message: "out of bounds",
 		}
 	}
@@ -30,9 +30,9 @@ func (g *Grid) validateCoordinate(x, y int) error {
 
 // validateRect validates that rectangle parameters are non-negative
 // and rectangle is fully contained within grid bounds.
-// Returns ValidationError if x < 0, y < 0, w < 0, h < 0, x+w > g.Cols(), or y+h > g.Rows().
-func (g *Grid) validateRect(x, y, w, h int) error {
-	if err := g.validateCoordinate(x, y); err != nil {
+// Returns ValidationError if c < 0, r < 0, w < 0, h < 0, c+w > g.Cols(), or r+h > g.Rows().
+func (g *Grid) validateRect(c, r, w, h int) error {
+	if err := g.validateCoordinate(c, r); err != nil {
 		return err
 	}
 	if err := validatePositive(w, "w"); err != nil {
@@ -41,17 +41,17 @@ func (g *Grid) validateRect(x, y, w, h int) error {
 	if err := validatePositive(h, "h"); err != nil {
 		return err
 	}
-	if x+w > g.cols {
+	if c+w > g.cols {
 		return &ValidationError{
 			Field:   "rectangle",
-			Value:   fmt.Sprintf("x=%d, w=%d, cols=%d", x, w, g.cols),
+			Value:   fmt.Sprintf("c=%d, w=%d, cols=%d", c, w, g.cols),
 			Message: "exceeds columns",
 		}
 	}
-	if y+h > g.Rows() {
+	if r+h > g.Rows() {
 		return &ValidationError{
 			Field:   "rectangle",
-			Value:   fmt.Sprintf("y=%d, h=%d, rows=%d", y, h, g.Rows()),
+			Value:   fmt.Sprintf("r=%d, h=%d, rows=%d", r, h, g.Rows()),
 			Message: "exceeds rows",
 		}
 	}

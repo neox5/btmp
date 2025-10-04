@@ -47,6 +47,18 @@ fmt.Println(b.PrintRangeFormat(0, 64, 16, true, 4, " "))  // Hex grouped
 fmt.Println(g.Print())                              // Grid visualization
 ```
 
+## Examples
+
+The `examples/` directory contains complete working examples:
+
+- **[bitmap_print](examples/bitmap_print/)** - Bitmap formatting and visualization (binary, hexadecimal, grouped output)
+- **[grid_print](examples/grid_print/)** - Grid visualization and pattern creation
+
+To run an example:
+```bash
+go run examples/bitmap_print/main.go
+```
+
 ## API surface
 
 **Bitmap**
@@ -107,7 +119,7 @@ Constructors:
 Accessors:
 * `(*Grid) Cols() int`
 * `(*Grid) Rows() int`
-* `(*Grid) Index(x, y int) int`
+* `(*Grid) Index(c, r int) int`
 
 Growth operations:
 * `(*Grid) EnsureCols(cols int) *Grid`
@@ -116,19 +128,19 @@ Growth operations:
 * `(*Grid) GrowRows(delta int) *Grid`
 
 Query operations:
-* `(*Grid) IsFree(x, y, w, h int) bool`
-* `(*Grid) CanShiftRight(x, y, w, h int) bool`
-* `(*Grid) CanShiftLeft(x, y, w, h int) bool`
-* `(*Grid) CanShiftUp(x, y, w, h int) bool`
-* `(*Grid) CanShiftDown(x, y, w, h int) bool`
+* `(*Grid) IsFree(c, r, w, h int) bool`
+* `(*Grid) CanShiftRight(c, r, w, h int) bool`
+* `(*Grid) CanShiftLeft(c, r, w, h int) bool`
+* `(*Grid) CanShiftUp(c, r, w, h int) bool`
+* `(*Grid) CanShiftDown(c, r, w, h int) bool`
 
 Rectangle mutators:
-* `(*Grid) SetRect(x, y, w, h int) *Grid`
-* `(*Grid) ClearRect(x, y, w, h int) *Grid`
-* `(*Grid) ShiftRectRight(x, y, w, h int) *Grid`
-* `(*Grid) ShiftRectLeft(x, y, w, h int) *Grid`
-* `(*Grid) ShiftRectUp(x, y, w, h int) *Grid`
-* `(*Grid) ShiftRectDown(x, y, w, h int) *Grid`
+* `(*Grid) SetRect(c, r, w, h int) *Grid`
+* `(*Grid) ClearRect(c, r, w, h int) *Grid`
+* `(*Grid) ShiftRectRight(c, r, w, h int) *Grid`
+* `(*Grid) ShiftRectLeft(c, r, w, h int) *Grid`
+* `(*Grid) ShiftRectUp(c, r, w, h int) *Grid`
+* `(*Grid) ShiftRectDown(c, r, w, h int) *Grid`
 
 Print operations:
 * `(*Grid) Print() string`

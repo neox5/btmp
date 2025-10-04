@@ -2,7 +2,7 @@ package btmp
 
 // setRect sets rectangle to 1 without validation.
 // Internal implementation - no auto-growth, requires in-bounds.
-func (g *Grid) setRect(x, y, w, h int) {
+func (g *Grid) setRect(c, r, w, h int) {
 	if w == 0 || h == 0 {
 		// Empty rectangle, nothing to do
 		return
@@ -10,14 +10,14 @@ func (g *Grid) setRect(x, y, w, h int) {
 
 	// Set each row of the rectangle
 	for row := range h {
-		start := (y+row)*g.cols + x
+		start := (r+row)*g.cols + c
 		g.B.setRange(start, w)
 	}
 }
 
 // clearRect clears rectangle to 0 without validation.
 // Internal implementation - no auto-growth.
-func (g *Grid) clearRect(x, y, w, h int) {
+func (g *Grid) clearRect(c, r, w, h int) {
 	if w == 0 || h == 0 {
 		// Empty rectangle, nothing to do
 		return
@@ -25,17 +25,17 @@ func (g *Grid) clearRect(x, y, w, h int) {
 
 	// Clear each row of the rectangle
 	for row := range h {
-		start := (y+row)*g.cols + x
+		start := (r+row)*g.cols + c
 		g.B.clearRange(start, w)
 	}
 }
 
 // isFree reports whether the specified rectangle contains only zeros.
 // Internal helper - no validation, assumes valid bounds.
-func (g *Grid) isFree(x, y, w, h int) bool {
+func (g *Grid) isFree(c, r, w, h int) bool {
 	// Check each row of the rectangle
 	for row := range h {
-		start := (y+row)*g.cols + x
+		start := (r+row)*g.cols + c
 		// Check if any bit is set in this row segment
 		for i := range w {
 			if g.B.Test(start + i) {
@@ -47,110 +47,110 @@ func (g *Grid) isFree(x, y, w, h int) bool {
 }
 
 // canShiftRight reports whether rectangle can shift right.
-// Checks if column x+w is free for rows [y, y+h).
+// Checks if column c+w is free for rows [r, r+h).
 // Internal helper - no validation, assumes valid bounds.
-func (g *Grid) canShiftRight(x, y, w, h int) bool {
-	targetCol := x + w
+func (g *Grid) canShiftRight(c, r, w, h int) bool {
+	targetCol := c + w
 	if targetCol >= g.cols {
 		return false
 	}
-	return g.isFree(targetCol, y, 1, h)
+	return g.isFree(targetCol, r, 1, h)
 }
 
 // canShiftLeft reports whether rectangle can shift left.
-// Checks if column x-1 is free for rows [y, y+h).
+// Checks if column c-1 is free for rows [r, r+h).
 // Internal helper - no validation, assumes valid bounds.
-func (g *Grid) canShiftLeft(x, y, w, h int) bool {
-	if x == 0 {
+func (g *Grid) canShiftLeft(c, r, w, h int) bool {
+	if c == 0 {
 		return false
 	}
-	targetCol := x - 1
-	return g.isFree(targetCol, y, 1, h)
+	targetCol := c - 1
+	return g.isFree(targetCol, r, 1, h)
 }
 
 // canShiftUp reports whether rectangle can shift up.
-// Checks if row y-1 is free for columns [x, x+w).
+// Checks if row r-1 is free for columns [c, c+w).
 // Internal helper - no validation, assumes valid bounds.
-func (g *Grid) canShiftUp(x, y, w, h int) bool {
-	if y == 0 {
+func (g *Grid) canShiftUp(c, r, w, h int) bool {
+	if r == 0 {
 		return false
 	}
-	targetRow := y - 1
-	return g.isFree(x, targetRow, w, 1)
+	targetRow := r - 1
+	return g.isFree(c, targetRow, w, 1)
 }
 
 // canShiftDown reports whether rectangle can shift down.
-// Checks if row y+h is free for columns [x, x+w).
+// Checks if row r+h is free for columns [c, c+w).
 // Internal helper - no validation, assumes valid bounds.
-func (g *Grid) canShiftDown(x, y, w, h int) bool {
-	targetRow := y + h
+func (g *Grid) canShiftDown(c, r, w, h int) bool {
+	targetRow := r + h
 	if targetRow >= g.Rows() {
 		return false
 	}
-	return g.isFree(x, targetRow, w, 1)
+	return g.isFree(c, targetRow, w, 1)
 }
 
 // shiftRectRight shifts a rectangle one column to the right.
-// Moves bits from [x,y,w,h) to [x+1,y,w,h).
-// The leftmost column (x) is cleared.
+// Moves bits from [c,r,w,h) to [c+1,r,w,h).
+// The leftmost column (c) is cleared.
 // Internal implementation - no validation, requires in-bounds and target column free.
-func (g *Grid) shiftRectRight(x, y, w, h int) {
+func (g *Grid) shiftRectRight(c, r, w, h int) {
 	if w == 0 || h == 0 {
 		return
 	}
 
 	for row := range h {
-		srcStart := (y+row)*g.cols + x
+		srcStart := (r+row)*g.cols + c
 		dstStart := srcStart + 1
 		g.B.MoveRange(srcStart, dstStart, w)
 	}
 }
 
 // shiftRectLeft shifts a rectangle one column to the left.
-// Moves bits from [x,y,w,h) to [x-1,y,w,h).
-// The rightmost column (x+w-1) is cleared.
+// Moves bits from [c,r,w,h) to [c-1,r,w,h).
+// The rightmost column (c+w-1) is cleared.
 // Internal implementation - no validation, requires in-bounds and target column free.
-func (g *Grid) shiftRectLeft(x, y, w, h int) {
+func (g *Grid) shiftRectLeft(c, r, w, h int) {
 	if w == 0 || h == 0 {
 		return
 	}
 
 	for row := range h {
-		srcStart := (y+row)*g.cols + x
+		srcStart := (r+row)*g.cols + c
 		dstStart := srcStart - 1
 		g.B.MoveRange(srcStart, dstStart, w)
 	}
 }
 
 // shiftRectUp shifts a rectangle one row up.
-// Moves bits from [x,y,w,h) to [x,y-1,w,h).
-// The bottom row (y+h-1) is cleared.
+// Moves bits from [c,r,w,h) to [c,r-1,w,h).
+// The bottom row (r+h-1) is cleared.
 // Internal implementation - no validation, requires in-bounds and target row free.
-func (g *Grid) shiftRectUp(x, y, w, h int) {
+func (g *Grid) shiftRectUp(c, r, w, h int) {
 	if w == 0 || h == 0 {
 		return
 	}
 
 	for row := range h {
-		srcStart := (y+row)*g.cols + x
-		dstStart := ((y-1)+row)*g.cols + x
+		srcStart := (r+row)*g.cols + c
+		dstStart := ((r-1)+row)*g.cols + c
 		g.B.MoveRange(srcStart, dstStart, w)
 	}
 }
 
 // shiftRectDown shifts a rectangle one row down.
-// Moves bits from [x,y,w,h) to [x,y+1,w,h).
-// The top row (y) is cleared.
+// Moves bits from [c,r,w,h) to [c,r+1,w,h).
+// The top row (r) is cleared.
 // Internal implementation - no validation, requires in-bounds and target row free.
-func (g *Grid) shiftRectDown(x, y, w, h int) {
+func (g *Grid) shiftRectDown(c, r, w, h int) {
 	if w == 0 || h == 0 {
 		return
 	}
 
 	// Process rows in reverse to avoid overlap issues
 	for row := h - 1; row >= 0; row-- {
-		srcStart := (y+row)*g.cols + x
-		dstStart := ((y+1)+row)*g.cols + x
+		srcStart := (r+row)*g.cols + c
+		dstStart := ((r+1)+row)*g.cols + c
 		g.B.MoveRange(srcStart, dstStart, w)
 	}
 }
