@@ -172,6 +172,23 @@ func (g *Grid) CanShiftDown(c, r, w, h int) bool {
 }
 
 // ========================================
+// Validation Operations
+// ========================================
+
+// ValidateCoordinate validates that c and r are non-negative and within grid bounds.
+// Returns ValidationError if c < 0, r < 0, c >= g.Cols(), or r >= g.Rows().
+func (g *Grid) ValidateCoordinate(c, r int) error {
+	return g.validateCoordinate(c, r)
+}
+
+// ValidateRect validates that rectangle parameters are non-negative
+// and rectangle is fully contained within grid bounds.
+// Returns ValidationError if c < 0, r < 0, w < 0, h < 0, c+w > g.Cols(), or r+h > g.Rows().
+func (g *Grid) ValidateRect(c, r, w, h int) error {
+	return g.validateRect(c, r, w, h)
+}
+
+// ========================================
 // Rectangle Mutators
 // ========================================
 

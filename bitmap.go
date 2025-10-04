@@ -150,6 +150,23 @@ func (b *Bitmap) Count() int {
 }
 
 // ========================================
+// Validation Operations
+// ========================================
+
+// ValidateInBounds validates that position is within bitmap bounds.
+// Returns ValidationError if pos >= bitmap length.
+func (b *Bitmap) ValidateInBounds(pos int) error {
+	return b.validateInBounds(pos)
+}
+
+// ValidateRange validates a complete range operation against bitmap bounds.
+// Validates start >= 0, count >= 0, no overflow, and range within bounds.
+// Returns ValidationError on any validation failure.
+func (b *Bitmap) ValidateRange(start, count int) error {
+	return b.validateRange(start, count)
+}
+
+// ========================================
 // Single-Bit Mutators
 // ========================================
 

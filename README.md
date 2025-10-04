@@ -36,8 +36,6 @@ g := btmp.NewGridWithSize(16, 10).
 
 idx := g.Index(7, 3)
 bits := b.GetBits(100, 16)
-_ = idx
-_ = bits
 
 // Print bits for inspection
 fmt.Println(b.Print())                              // Binary string
@@ -79,6 +77,10 @@ Query operations:
 * `(*Bitmap) GetBits(pos, n int) uint64`
 * `(*Bitmap) Any() bool`
 * `(*Bitmap) Count() int`
+
+Validation operations:
+* `(*Bitmap) ValidateInBounds(pos int) error`
+* `(*Bitmap) ValidateRange(start, count int) error`
 
 Single-bit mutators:
 * `(*Bitmap) SetBit(pos int) *Bitmap`
@@ -133,6 +135,10 @@ Query operations:
 * `(*Grid) CanShiftLeft(c, r, w, h int) bool`
 * `(*Grid) CanShiftUp(c, r, w, h int) bool`
 * `(*Grid) CanShiftDown(c, r, w, h int) bool`
+
+Validation operations:
+* `(*Grid) ValidateCoordinate(c, r int) error`
+* `(*Grid) ValidateRect(c, r, w, h int) error`
 
 Rectangle mutators:
 * `(*Grid) SetRect(c, r, w, h int) *Grid`
