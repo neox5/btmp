@@ -24,9 +24,15 @@ func NewGrid() *Grid {
 // NewGridWithSize returns a Grid sized to rows*cols bits.
 // Accepts cols == 0 or rows == 0. Panics if cols < 0, rows < 0, or size overflows.
 func NewGridWithSize(cols, rows int) *Grid {
-	validateNonNegative(cols, "cols")
-	validateNonNegative(rows, "rows")
-	validateGridSizeMax(rows, cols)
+	if err := validateNonNegative(cols, "cols"); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.NewGridWithSize"))
+	}
+	if err := validateNonNegative(rows, "rows"); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.NewGridWithSize"))
+	}
+	if err := validateGridSizeMax(rows, cols); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.NewGridWithSize"))
+	}
 
 	size := cols * rows
 	return &Grid{
@@ -54,8 +60,12 @@ func (g *Grid) Rows() int {
 
 // Index returns y*Cols + x. Panics on negative x or y.
 func (g *Grid) Index(x, y int) int {
-	validateNonNegative(x, "x")
-	validateNonNegative(y, "y")
+	if err := validateNonNegative(x, "x"); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.Index"))
+	}
+	if err := validateNonNegative(y, "y"); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.Index"))
+	}
 	return y*g.cols + x
 }
 
@@ -66,7 +76,9 @@ func (g *Grid) Index(x, y int) int {
 // EnsureCols grows Cols to at least cols, repositioning like GrowCols when needed.
 // No-op if cols <= Cols. Returns g. Panics if cols < 0.
 func (g *Grid) EnsureCols(cols int) *Grid {
-	validateNonNegative(cols, "cols")
+	if err := validateNonNegative(cols, "cols"); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.EnsureCols"))
+	}
 	g.ensureCols(cols)
 	return g
 }
@@ -74,7 +86,9 @@ func (g *Grid) EnsureCols(cols int) *Grid {
 // EnsureRows ensures at least rows rows exist. No repositioning. Returns g.
 // Panics if rows < 0.
 func (g *Grid) EnsureRows(rows int) *Grid {
-	validateNonNegative(rows, "rows")
+	if err := validateNonNegative(rows, "rows"); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.EnsureRows"))
+	}
 	g.ensureRows(rows)
 	return g
 }
@@ -83,7 +97,9 @@ func (g *Grid) EnsureRows(rows int) *Grid {
 // cell (x,y) remains at the same coordinates under the new Cols.
 // Newly created columns are zero. Returns g. Panics if delta < 0.
 func (g *Grid) GrowCols(delta int) *Grid {
-	validateNonNegative(delta, "delta")
+	if err := validateNonNegative(delta, "delta"); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.GrowCols"))
+	}
 	if delta > 0 {
 		g.growCols(delta)
 	}
@@ -93,7 +109,9 @@ func (g *Grid) GrowCols(delta int) *Grid {
 // GrowRows appends delta (>0) empty rows below current content. Returns g.
 // Panics if delta < 0.
 func (g *Grid) GrowRows(delta int) *Grid {
-	validateNonNegative(delta, "delta")
+	if err := validateNonNegative(delta, "delta"); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.GrowRows"))
+	}
 	if delta > 0 {
 		g.growRows(delta)
 	}
@@ -107,7 +125,9 @@ func (g *Grid) GrowRows(delta int) *Grid {
 // IsFree reports whether the specified rectangle contains only zeros.
 // Panics if rectangle is invalid or out of bounds.
 func (g *Grid) IsFree(x, y, w, h int) bool {
-	g.validateRect(x, y, w, h)
+	if err := g.validateRect(x, y, w, h); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.IsFree"))
+	}
 	return g.isFree(x, y, w, h)
 }
 
@@ -115,7 +135,9 @@ func (g *Grid) IsFree(x, y, w, h int) bool {
 // Checks if column x+w exists and is free (all zeros) for rows [y, y+h).
 // Panics if rectangle is invalid or out of bounds.
 func (g *Grid) CanShiftRight(x, y, w, h int) bool {
-	g.validateRect(x, y, w, h)
+	if err := g.validateRect(x, y, w, h); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.CanShiftRight"))
+	}
 	return g.canShiftRight(x, y, w, h)
 }
 
@@ -123,7 +145,9 @@ func (g *Grid) CanShiftRight(x, y, w, h int) bool {
 // Checks if column x-1 exists and is free (all zeros) for rows [y, y+h).
 // Panics if rectangle is invalid or out of bounds.
 func (g *Grid) CanShiftLeft(x, y, w, h int) bool {
-	g.validateRect(x, y, w, h)
+	if err := g.validateRect(x, y, w, h); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.CanShiftLeft"))
+	}
 	return g.canShiftLeft(x, y, w, h)
 }
 
@@ -131,7 +155,9 @@ func (g *Grid) CanShiftLeft(x, y, w, h int) bool {
 // Checks if row y-1 exists and is free (all zeros) for columns [x, x+w).
 // Panics if rectangle is invalid or out of bounds.
 func (g *Grid) CanShiftUp(x, y, w, h int) bool {
-	g.validateRect(x, y, w, h)
+	if err := g.validateRect(x, y, w, h); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.CanShiftUp"))
+	}
 	return g.canShiftUp(x, y, w, h)
 }
 
@@ -139,7 +165,9 @@ func (g *Grid) CanShiftUp(x, y, w, h int) bool {
 // Checks if row y+h exists and is free (all zeros) for columns [x, x+w).
 // Panics if rectangle is invalid or out of bounds.
 func (g *Grid) CanShiftDown(x, y, w, h int) bool {
-	g.validateRect(x, y, w, h)
+	if err := g.validateRect(x, y, w, h); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.CanShiftDown"))
+	}
 	return g.canShiftDown(x, y, w, h)
 }
 
@@ -152,7 +180,9 @@ func (g *Grid) CanShiftDown(x, y, w, h int) bool {
 // x+w > Cols, or y+h > Rows.
 // Returns *Grid for chaining.
 func (g *Grid) SetRect(x, y, w, h int) *Grid {
-	g.validateRect(x, y, w, h)
+	if err := g.validateRect(x, y, w, h); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.SetRect"))
+	}
 	g.setRect(x, y, w, h)
 	return g
 }
@@ -160,7 +190,9 @@ func (g *Grid) SetRect(x, y, w, h int) *Grid {
 // ClearRect clears to 0 a rectangle of size w×h at origin (x,y).
 // Panics if rectangle exceeds current Rows() or Cols(). Returns g.
 func (g *Grid) ClearRect(x, y, w, h int) *Grid {
-	g.validateRect(x, y, w, h)
+	if err := g.validateRect(x, y, w, h); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.ClearRect"))
+	}
 	g.clearRect(x, y, w, h)
 	return g
 }
@@ -171,9 +203,16 @@ func (g *Grid) ClearRect(x, y, w, h int) *Grid {
 // Returns *Grid for chaining. Panics if rectangle is invalid, out of bounds,
 // or target column is not free.
 func (g *Grid) ShiftRectRight(x, y, w, h int) *Grid {
-	g.validateRect(x, y, w, h)
+	if err := g.validateRect(x, y, w, h); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.ShiftRectRight"))
+	}
 	if !g.canShiftRight(x, y, w, h) {
-		panic("cannot shift right")
+		panic(&ValidationError{
+			Field:   "shift",
+			Value:   "right",
+			Message: "target column not free",
+			Context: "Grid.ShiftRectRight",
+		})
 	}
 	g.shiftRectRight(x, y, w, h)
 	return g
@@ -185,9 +224,16 @@ func (g *Grid) ShiftRectRight(x, y, w, h int) *Grid {
 // Returns *Grid for chaining. Panics if rectangle is invalid, out of bounds,
 // or target column is not free.
 func (g *Grid) ShiftRectLeft(x, y, w, h int) *Grid {
-	g.validateRect(x, y, w, h)
+	if err := g.validateRect(x, y, w, h); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.ShiftRectLeft"))
+	}
 	if !g.canShiftLeft(x, y, w, h) {
-		panic("cannot shift left")
+		panic(&ValidationError{
+			Field:   "shift",
+			Value:   "left",
+			Message: "target column not free",
+			Context: "Grid.ShiftRectLeft",
+		})
 	}
 	g.shiftRectLeft(x, y, w, h)
 	return g
@@ -199,9 +245,16 @@ func (g *Grid) ShiftRectLeft(x, y, w, h int) *Grid {
 // Returns *Grid for chaining. Panics if rectangle is invalid, out of bounds,
 // or target row is not free.
 func (g *Grid) ShiftRectUp(x, y, w, h int) *Grid {
-	g.validateRect(x, y, w, h)
+	if err := g.validateRect(x, y, w, h); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.ShiftRectUp"))
+	}
 	if !g.canShiftUp(x, y, w, h) {
-		panic("cannot shift up")
+		panic(&ValidationError{
+			Field:   "shift",
+			Value:   "up",
+			Message: "target row not free",
+			Context: "Grid.ShiftRectUp",
+		})
 	}
 	g.shiftRectUp(x, y, w, h)
 	return g
@@ -213,9 +266,16 @@ func (g *Grid) ShiftRectUp(x, y, w, h int) *Grid {
 // Returns *Grid for chaining. Panics if rectangle is invalid, out of bounds,
 // or target row is not free.
 func (g *Grid) ShiftRectDown(x, y, w, h int) *Grid {
-	g.validateRect(x, y, w, h)
+	if err := g.validateRect(x, y, w, h); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.ShiftRectDown"))
+	}
 	if !g.canShiftDown(x, y, w, h) {
-		panic("cannot shift down")
+		panic(&ValidationError{
+			Field:   "shift",
+			Value:   "down",
+			Message: "target row not free",
+			Context: "Grid.ShiftRectDown",
+		})
 	}
 	g.shiftRectDown(x, y, w, h)
 	return g
@@ -231,7 +291,9 @@ func (g *Grid) ShiftRectDown(x, y, w, h int) *Grid {
 // Returns empty string if grid has no rows or columns.
 //
 // Example output for a 5x3 grid with bits set at (1,0) and (3,1):
-//   0 1 2 3 4
+//
+//	0 1 2 3 4
+//
 // 0 . # . . .
 // 1 . . . # .
 // 2 . . . . .

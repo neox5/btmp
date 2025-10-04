@@ -61,7 +61,9 @@ func (b *Bitmap) Words() []uint64 { return b.words }
 // EnsureBits grows the logical length to at least n bits. No-op if n <= Len().
 // Returns *Bitmap for chaining. Panics if n < 0.
 func (b *Bitmap) EnsureBits(n int) *Bitmap {
-	validateNonNegative(n, "n")
+	if err := validateNonNegative(n, "n"); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.EnsureBits"))
+	}
 
 	if n > b.lenBits {
 		b.ensureBits(n)
@@ -73,7 +75,9 @@ func (b *Bitmap) EnsureBits(n int) *Bitmap {
 // AddBits grows the logical length by n bits.
 // Returns *Bitmap for chaining. Panics if n < 0.
 func (b *Bitmap) AddBits(n int) *Bitmap {
-	validateNonNegative(n, "n")
+	if err := validateNonNegative(n, "n"); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.AddBits"))
+	}
 
 	if n > 0 {
 		b.addBits(n)
@@ -88,8 +92,12 @@ func (b *Bitmap) AddBits(n int) *Bitmap {
 
 // Test reports whether bit pos is set. Panics if pos is out of [0, Len()).
 func (b *Bitmap) Test(pos int) bool {
-	validateNonNegative(pos, "pos")
-	b.validateInBounds(pos)
+	if err := validateNonNegative(pos, "pos"); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.Test"))
+	}
+	if err := b.validateInBounds(pos); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.Test"))
+	}
 
 	w, off := wordIndex(pos)
 	return (b.words[w]>>off)&1 == 1
@@ -101,9 +109,15 @@ func (b *Bitmap) Test(pos int) bool {
 //
 // Example: bitmap 11010110, GetBits(2, 3) returns 101 (bits at positions 2,3,4).
 func (b *Bitmap) GetBits(pos, n int) uint64 {
-	validateNonNegative(pos, "pos")
-	validateWordBits(n)
-	b.validateRange(pos, n)
+	if err := validateNonNegative(pos, "pos"); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.GetBits"))
+	}
+	if err := validateWordBits(n); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.GetBits"))
+	}
+	if err := b.validateRange(pos, n); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.GetBits"))
+	}
 
 	return b.getBits(pos, n)
 }
@@ -141,8 +155,12 @@ func (b *Bitmap) Count() int {
 
 // SetBit sets bit pos to 1. Panics if pos < 0 or pos >= Len().
 func (b *Bitmap) SetBit(pos int) *Bitmap {
-	validateNonNegative(pos, "pos")
-	b.validateInBounds(pos)
+	if err := validateNonNegative(pos, "pos"); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.SetBit"))
+	}
+	if err := b.validateInBounds(pos); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.SetBit"))
+	}
 
 	b.setBit(pos)
 	return b
@@ -150,8 +168,12 @@ func (b *Bitmap) SetBit(pos int) *Bitmap {
 
 // ClearBit sets bit pos to 0. Panics if pos < 0 or pos >= Len().
 func (b *Bitmap) ClearBit(pos int) *Bitmap {
-	validateNonNegative(pos, "pos")
-	b.validateInBounds(pos)
+	if err := validateNonNegative(pos, "pos"); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.ClearBit"))
+	}
+	if err := b.validateInBounds(pos); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.ClearBit"))
+	}
 
 	b.clearBit(pos)
 	return b
@@ -159,8 +181,12 @@ func (b *Bitmap) ClearBit(pos int) *Bitmap {
 
 // FlipBit toggles bit pos. Panics if pos < 0 or pos >= Len().
 func (b *Bitmap) FlipBit(pos int) *Bitmap {
-	validateNonNegative(pos, "pos")
-	b.validateInBounds(pos)
+	if err := validateNonNegative(pos, "pos"); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.FlipBit"))
+	}
+	if err := b.validateInBounds(pos); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.FlipBit"))
+	}
 
 	b.flipBit(pos)
 	return b
@@ -177,9 +203,15 @@ func (b *Bitmap) FlipBit(pos int) *Bitmap {
 //
 // Example: SetBits(2, 3, 0b101) sets 3 bits starting at position 2 to the pattern 101.
 func (b *Bitmap) SetBits(pos, n int, val uint64) *Bitmap {
-	validateNonNegative(pos, "pos")
-	validateWordBits(n)
-	b.validateRange(pos, n)
+	if err := validateNonNegative(pos, "pos"); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.SetBits"))
+	}
+	if err := validateWordBits(n); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.SetBits"))
+	}
+	if err := b.validateRange(pos, n); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.SetBits"))
+	}
 
 	b.setBits(pos, n, val)
 	return b
@@ -192,7 +224,9 @@ func (b *Bitmap) SetBits(pos, n int, val uint64) *Bitmap {
 // SetRange sets bits in [start, start+count) to 1. In-bounds only.
 // Returns *Bitmap for chaining. Panics on negative inputs, overflow, or out-of-bounds.
 func (b *Bitmap) SetRange(start, count int) *Bitmap {
-	b.validateRange(start, count)
+	if err := b.validateRange(start, count); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.SetRange"))
+	}
 
 	b.setRange(start, count)
 	return b
@@ -201,7 +235,9 @@ func (b *Bitmap) SetRange(start, count int) *Bitmap {
 // ClearRange clears bits in [start, start+count) to 0. In-bounds only.
 // Returns *Bitmap for chaining. Panics on negative inputs, overflow, or out-of-bounds.
 func (b *Bitmap) ClearRange(start, count int) *Bitmap {
-	b.validateRange(start, count)
+	if err := b.validateRange(start, count); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.ClearRange"))
+	}
 
 	b.clearRange(start, count)
 	return b
@@ -211,10 +247,15 @@ func (b *Bitmap) ClearRange(start, count int) *Bitmap {
 // In-bounds only for both src and dst. Overlap-safe with memmove semantics.
 // Returns *Bitmap for chaining. Panics on negative inputs, nil src, or out-of-bounds.
 func (b *Bitmap) CopyRange(src *Bitmap, srcStart, dstStart, count int) *Bitmap {
-	validateNotNil(src, "src")
-
-	src.validateRange(srcStart, count)
-	b.validateRange(dstStart, count)
+	if err := validateNotNil(src, "src"); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.CopyRange"))
+	}
+	if err := src.validateRange(srcStart, count); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.CopyRange"))
+	}
+	if err := b.validateRange(dstStart, count); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.CopyRange"))
+	}
 
 	b.copyRange(src, srcStart, dstStart, count)
 	return b
@@ -225,8 +266,12 @@ func (b *Bitmap) CopyRange(src *Bitmap, srcStart, dstStart, count int) *Bitmap {
 // In-bounds only for both source and destination ranges.
 // Returns *Bitmap for chaining. Panics on negative inputs, overflow, or out-of-bounds.
 func (b *Bitmap) MoveRange(srcStart, dstStart, count int) *Bitmap {
-	b.validateRange(srcStart, count)
-	b.validateRange(dstStart, count)
+	if err := b.validateRange(srcStart, count); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.MoveRange"))
+	}
+	if err := b.validateRange(dstStart, count); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.MoveRange"))
+	}
 
 	b.moveRange(srcStart, dstStart, count)
 	return b
@@ -259,8 +304,12 @@ func (b *Bitmap) ClearAll() *Bitmap {
 // And performs bitwise AND with other bitmap. Both bitmaps must have the same length.
 // Returns *Bitmap for chaining. Panics if other is nil or lengths differ.
 func (b *Bitmap) And(other *Bitmap) *Bitmap {
-	validateNotNil(other, "other")
-	validateSameLength(b, other)
+	if err := validateNotNil(other, "other"); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.And"))
+	}
+	if err := validateSameLength(b, other); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.And"))
+	}
 
 	b.and(other)
 	return b
@@ -269,8 +318,12 @@ func (b *Bitmap) And(other *Bitmap) *Bitmap {
 // Or performs bitwise OR with other bitmap. Both bitmaps must have the same length.
 // Returns *Bitmap for chaining. Panics if other is nil or lengths differ.
 func (b *Bitmap) Or(other *Bitmap) *Bitmap {
-	validateNotNil(other, "other")
-	validateSameLength(b, other)
+	if err := validateNotNil(other, "other"); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.Or"))
+	}
+	if err := validateSameLength(b, other); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.Or"))
+	}
 
 	b.or(other)
 	return b
@@ -279,8 +332,12 @@ func (b *Bitmap) Or(other *Bitmap) *Bitmap {
 // Xor performs bitwise XOR with other bitmap. Both bitmaps must have the same length.
 // Returns *Bitmap for chaining. Panics if other is nil or lengths differ.
 func (b *Bitmap) Xor(other *Bitmap) *Bitmap {
-	validateNotNil(other, "other")
-	validateSameLength(b, other)
+	if err := validateNotNil(other, "other"); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.Xor"))
+	}
+	if err := validateSameLength(b, other); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.Xor"))
+	}
 
 	b.xor(other)
 	return b
@@ -307,7 +364,9 @@ func (b *Bitmap) Print() string {
 // Returns empty string if count == 0.
 // Panics if start < 0, count < 0, or start+count > Len().
 func (b *Bitmap) PrintRange(start, count int) string {
-	b.validateRange(start, count)
+	if err := b.validateRange(start, count); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.PrintRange"))
+	}
 	return b.printRangeFormat(start, count, 2, false, 0, "")
 }
 
@@ -329,13 +388,25 @@ func (b *Bitmap) PrintFormat(base int, grouped bool, groupSize int, sep string) 
 // Panics if start < 0, count < 0, start+count > Len(), base not in {2,16},
 // or grouped && groupSize <= 0.
 func (b *Bitmap) PrintRangeFormat(start, count int, base int, grouped bool, groupSize int, sep string) string {
-	b.validateRange(start, count)
+	if err := b.validateRange(start, count); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.PrintRangeFormat"))
+	}
 
 	if base != 2 && base != 16 {
-		panic("base must be 2 or 16")
+		panic(&ValidationError{
+			Field:   "base",
+			Value:   base,
+			Message: "must be 2 or 16",
+			Context: "Bitmap.PrintRangeFormat",
+		})
 	}
 	if grouped && groupSize <= 0 {
-		panic("groupSize must be positive when grouped")
+		panic(&ValidationError{
+			Field:   "groupSize",
+			Value:   groupSize,
+			Message: "must be positive when grouped",
+			Context: "Bitmap.PrintRangeFormat",
+		})
 	}
 
 	return b.printRangeFormat(start, count, base, grouped, groupSize, sep)

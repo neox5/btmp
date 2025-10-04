@@ -1,21 +1,39 @@
 package btmp
 
+import "fmt"
+
 // validateInBounds validates that position is within bitmap bounds.
-// Panics if pos >= bitmap length.
-func (b *Bitmap) validateInBounds(pos int) {
+// Returns ValidationError if pos >= bitmap length.
+func (b *Bitmap) validateInBounds(pos int) error {
 	if pos >= b.lenBits {
-		panic("position out of bounds")
+		return &ValidationError{
+			Field:   "pos",
+			Value:   fmt.Sprintf("pos=%d, len=%d", pos, b.lenBits),
+			Message: "position out of bounds",
+		}
 	}
+	return nil
 }
 
 // validateRange validates a complete range operation against bitmap bounds.
 // Validates start >= 0, count >= 0, no overflow, and range within bounds.
-// Panics on any validation failure.
-func (b *Bitmap) validateRange(start, count int) {
-	validateNonNegative(start, "start")
-	validateNonNegative(count, "count")
-	validateRangeOverflow(start, count)
-	if start+count > b.lenBits {
-		panic("range exceeds bitmap bounds")
+// Returns ValidationError on any validation failure.
+func (b *Bitmap) validateRange(start, count int) error {
+	if err := validateNonNegative(start, "start"); err != nil {
+		return err
 	}
+	if err := validateNonNegative(count, "count"); err != nil {
+		return err
+	}
+	if err := validateRangeOverflow(start, count); err != nil {
+		return err
+	}
+	if start+count > b.lenBits {
+		return &ValidationError{
+			Field:   "range",
+			Value:   fmt.Sprintf("start=%d, count=%d, len=%d", start, count, b.lenBits),
+			Message: "exceeds bitmap bounds",
+		}
+	}
+	return nil
 }
