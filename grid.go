@@ -50,7 +50,7 @@ func (g *Grid) Cols() int {
 	return g.cols
 }
 
-// Rows reports Len()/Cols. If Cols==0 or Len()==0, Rows==0.
+// Rows reports Len()/Cols. Returns 0 if Cols==0 or Len()==0.
 func (g *Grid) Rows() int {
 	if g.cols == 0 || g.B.Len() == 0 {
 		return 0
