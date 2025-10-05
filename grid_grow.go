@@ -12,10 +12,12 @@ func (g *Grid) ensureCols(cols int) {
 // ensureRows ensures at least rows rows exist without validation.
 // Internal implementation - no bounds checking.
 func (g *Grid) ensureRows(rows int) {
-	if rows <= g.Rows() {
+	if rows <= g.rows {
 		return
 	}
-	g.B.EnsureBits(rows * g.cols)
+	delta := rows - g.rows
+	g.B.EnsureBits((g.rows + delta) * g.cols)
+	g.rows = rows
 }
 
 // growCols increases Cols by delta and repositions existing rows.
@@ -41,7 +43,7 @@ func (g *Grid) ensureRows(rows int) {
 func (g *Grid) growCols(delta int) {
 	oldCols := g.cols
 	newCols := oldCols + delta
-	rows := g.Rows()
+	rows := g.rows
 
 	if rows == 0 {
 		// No data to reposition
@@ -69,6 +71,7 @@ func (g *Grid) growCols(delta int) {
 // growRows appends delta empty rows without validation.
 // Internal implementation - no validation.
 func (g *Grid) growRows(delta int) {
-	newRows := g.Rows() + delta
+	newRows := g.rows + delta
 	g.B.EnsureBits(newRows * g.cols)
+	g.rows = newRows
 }

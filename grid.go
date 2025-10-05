@@ -6,19 +6,16 @@ package btmp
 type Grid struct {
 	B    *Bitmap
 	cols int
+	rows int
 }
 
 // ========================================
 // Constructor Functions
 // ========================================
 
-// NewGrid returns a Grid with a new empty underlying Bitmap and zero columns.
-// The grid must be configured with GrowCols or EnsureCols before use.
+// NewGrid returns a Grid with zero rows and columns.
 func NewGrid() *Grid {
-	return &Grid{
-		B:    New(0),
-		cols: 0,
-	}
+	return NewGridWithSize(0, 0)
 }
 
 // NewGridWithSize returns a Grid sized to rows*cols bits.
@@ -38,6 +35,7 @@ func NewGridWithSize(rows, cols int) *Grid {
 	return &Grid{
 		B:    New(uint(size)),
 		cols: cols,
+		rows: rows,
 	}
 }
 
@@ -50,12 +48,9 @@ func (g *Grid) Cols() int {
 	return g.cols
 }
 
-// Rows reports Len()/Cols. Returns 0 if Cols==0 or Len()==0.
+// Rows returns the number of rows.
 func (g *Grid) Rows() int {
-	if g.cols == 0 || g.B.Len() == 0 {
-		return 0
-	}
-	return g.B.Len() / g.cols
+	return g.rows
 }
 
 // Index returns r*Cols + c. Panics on negative r or c.

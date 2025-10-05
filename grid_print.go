@@ -8,7 +8,7 @@ import (
 // print formats the grid as a coordinate-labeled visualization.
 // Internal implementation - no validation.
 func (g *Grid) print() string {
-	rows := g.Rows()
+	rows := g.rows
 	cols := g.cols
 
 	// Empty grid

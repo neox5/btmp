@@ -11,10 +11,10 @@ func (g *Grid) validateCoordinate(r, c int) error {
 	if err := validateNonNegative(c, "c"); err != nil {
 		return err
 	}
-	if r >= g.Rows() {
+	if r >= g.rows {
 		return &ValidationError{
 			Field:   "r",
-			Value:   fmt.Sprintf("r=%d, rows=%d", r, g.Rows()),
+			Value:   fmt.Sprintf("r=%d, rows=%d", r, g.rows),
 			Message: "out of bounds",
 		}
 	}
@@ -41,10 +41,10 @@ func (g *Grid) validateRect(r, c, h, w int) error {
 	if err := validatePositive(w, "w"); err != nil {
 		return err
 	}
-	if r+h > g.Rows() {
+	if r+h > g.rows {
 		return &ValidationError{
 			Field:   "rectangle",
-			Value:   fmt.Sprintf("r=%d, h=%d, rows=%d", r, h, g.Rows()),
+			Value:   fmt.Sprintf("r=%d, h=%d, rows=%d", r, h, g.rows),
 			Message: "exceeds rows",
 		}
 	}
