@@ -62,11 +62,11 @@ if b.Test(42) { /* bit is set */ }
 count := b.Count()               // Number of set bits
 bits := b.GetBits(100, 16)       // Extract 16 bits starting at 100
 
-// Grid - zero-copy 2D view
-g := btmp.NewGridWithSize(16, 10)
-g.SetRect(3, 2, 5, 4)            // Set 5×4 rectangle at (3,2)
-if g.IsFree(8, 5, 3, 3) {        // Check if 3×3 region is available
-    g.SetRect(8, 5, 3, 3)
+// Grid - zero-copy 2D view (row-major)
+g := btmp.NewGridWithSize(10, 16) // 10 rows, 16 columns
+g.SetRect(2, 3, 4, 5)             // Set 4×5 rectangle at row 2, col 3
+if g.IsFree(5, 8, 3, 3) {         // Check if 3×3 region is available at row 5, col 8
+    g.SetRect(5, 8, 3, 3)
 }
 ```
 
@@ -103,7 +103,7 @@ go run examples/bitmap_print/main.go
 - Growth (4): `EnsureCols`, `EnsureRows`, `GrowCols`, `GrowRows`
 - Query (5): `IsFree`, `CanShiftRight`, `CanShiftLeft`, `CanShiftUp`, `CanShiftDown`
 - Validation (2): `ValidateCoordinate`, `ValidateRect`
-- Rectangle (6): `SetRect`, `ClearRect`, `ShiftRect{Right,Left,Up,Down}`
+- Rectangle (6): `SetRect`, `ClearRect`, `ShiftRect`
 - Print (1): `Print`
 
 ## License

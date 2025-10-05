@@ -26,7 +26,7 @@ func (g *Grid) ensureRows(rows int) {
 //  2. Move each row from old stride to new stride using MoveRange (bottom-to-top)
 //  3. MoveRange handles both copying and clearing source, maintaining bitmap invariants
 //
-// Example: 3x2 grid growing to 5x2:
+// Example: 2x3 grid (2 rows, 3 cols) growing to 2x5 (2 rows, 5 cols):
 //
 //	Before: [0,1,2][3,4,5] (cols=3, len=6)
 //	After:  [0,1,2,_,_][3,4,5,_,_] (cols=5, len=10)
