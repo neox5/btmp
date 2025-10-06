@@ -13,8 +13,6 @@
 //     even when count == 0.
 package btmp
 
-import "math/bits"
-
 const (
 	WordBits         = 64
 	WordShift        = 6            // log2(64), divide by 64 via >> 6
@@ -99,54 +97,56 @@ func (b *Bitmap) Test(pos int) bool {
 		panic(err.(*ValidationError).WithContext("Bitmap.Test"))
 	}
 
-	w, off := wordIndex(pos)
-	return (b.words[w]>>off)&1 == 1
-}
-
-// GetBits extracts n bits starting from pos, returned right-aligned.
-// The result contains the extracted bits in the least significant positions.
-// Panics if pos < 0, n <= 0, n > 64, or pos+n > Len().
-//
-// Example: bitmap 11010110, GetBits(2, 3) returns 101 (bits at positions 2,3,4).
-func (b *Bitmap) GetBits(pos, n int) uint64 {
-	if err := validateNonNegative(pos, "pos"); err != nil {
-		panic(err.(*ValidationError).WithContext("Bitmap.GetBits"))
-	}
-	if err := validateWordBits(n); err != nil {
-		panic(err.(*ValidationError).WithContext("Bitmap.GetBits"))
-	}
-	if err := b.validateRange(pos, n); err != nil {
-		panic(err.(*ValidationError).WithContext("Bitmap.GetBits"))
-	}
-
-	return b.getBits(pos, n)
+	return b.test(pos)
 }
 
 // Any reports whether any bit in [0, Len()) is set.
 func (b *Bitmap) Any() bool {
-	if b.lenBits == 0 {
-		return false
-	}
-	// full words except the last
-	for i := range b.lastWordIdx {
-		if b.words[i] != 0 {
-			return true
-		}
-	}
-	// masked last word
-	return (b.words[b.lastWordIdx] & b.tailMask) != 0
+	return b.any()
+}
+
+// All reports whether all bits in [0, Len()) are set.
+// Returns true for empty bitmaps (vacuously true).
+func (b *Bitmap) All() bool {
+	return b.all()
 }
 
 // Count returns the number of set bits in [0, Len()).
 func (b *Bitmap) Count() int {
-	if b.lenBits == 0 {
-		return 0
+	return b.count()
+}
+
+// AnyRange reports whether any bit in [start, start+count) is set.
+// Returns false for empty ranges (count == 0).
+// Panics if start < 0, count < 0, or start+count > Len().
+func (b *Bitmap) AnyRange(start, count int) bool {
+	if err := b.validateRange(start, count); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.AnyRange"))
 	}
-	sum := 0
-	for i := range b.lastWordIdx {
-		sum += bits.OnesCount64(b.words[i])
+
+	return b.anyRange(start, count)
+}
+
+// AllRange reports whether all bits in [start, start+count) are set.
+// Returns true for empty ranges (vacuously true).
+// Panics if start < 0, count < 0, or start+count > Len().
+func (b *Bitmap) AllRange(start, count int) bool {
+	if err := b.validateRange(start, count); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.AllRange"))
 	}
-	return sum + bits.OnesCount64(b.words[b.lastWordIdx]&b.tailMask)
+
+	return b.allRange(start, count)
+}
+
+// CountRange returns the number of set bits in [start, start+count).
+// Returns 0 for empty ranges (count == 0).
+// Panics if start < 0, count < 0, or start+count > Len().
+func (b *Bitmap) CountRange(start, count int) int {
+	if err := b.validateRange(start, count); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.CountRange"))
+	}
+
+	return b.countRange(start, count)
 }
 
 // ========================================
@@ -218,7 +218,9 @@ func (b *Bitmap) FlipBit(pos int) *Bitmap {
 // Preserves surrounding bits unchanged. Panics if pos < 0, n <= 0, n > 64, or pos+n > Len().
 // Returns *Bitmap for chaining.
 //
-// Example: SetBits(2, 3, 0b101) sets 3 bits starting at position 2 to the pattern 101.
+// This method is primarily useful for initializing bitmaps from constants:
+//   b.SetBits(0, 16, 0xABCD)  // Set hex pattern
+//   b.SetBits(8, 4, 0b1010)   // Set binary pattern
 func (b *Bitmap) SetBits(pos, n int, val uint64) *Bitmap {
 	if err := validateNonNegative(pos, "pos"); err != nil {
 		panic(err.(*ValidationError).WithContext("Bitmap.SetBits"))

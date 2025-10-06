@@ -59,8 +59,11 @@ b.And(b2).Or(b2).Xor(b2).Not()
 
 // Query operations
 if b.Test(42) { /* bit is set */ }
-count := b.Count()               // Number of set bits
-bits := b.GetBits(100, 16)       // Extract 16 bits starting at 100
+if b.Any() { /* has any set bits */ }
+if b.All() { /* all bits set */ }
+count := b.Count()                    // Number of set bits
+count = b.CountRange(100, 50)         // Count in range [100, 150)
+if b.AnyRange(200, 10) { /* ... */ }  // Any bits set in range
 
 // Grid - zero-copy 2D view (row-major)
 g := btmp.NewGridWithSize(10, 16) // 10 rows, 16 columns
@@ -84,11 +87,11 @@ go run examples/bitmap_print/main.go
 
 ## API
 
-**Bitmap** - 34 methods
+**Bitmap** - 38 methods
 - Construction (1): `New`
 - Access (2): `Len`, `Words`
 - Growth (2): `EnsureBits`, `AddBits`
-- Query (4): `Test`, `GetBits`, `Any`, `Count`
+- Query (7): `Test`, `Any`, `All`, `Count`, `AnyRange`, `AllRange`, `CountRange`
 - Validation (2): `ValidateInBounds`, `ValidateRange`
 - Single-bit (3): `SetBit`, `ClearBit`, `FlipBit`
 - Multi-bit (1): `SetBits`
