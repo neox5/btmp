@@ -1,24 +1,35 @@
 package btmp
 
-// maskForRange calculates bit masks for range [startBit, endBit).
-// Returns headMask for first partial word, tailMask for last partial word.
-// For single-word ranges, only headMask is set.
-func maskForRange(startBit, endBit int) (headMask, tailMask uint64) {
-	w0, off0 := wordIndex(startBit)
-	w1, off1 := wordIndex(endBit)
+// wordMasksFromRange calculates word indices and bit masks for a range [start, start+count).
+// Returns:
+//   - w0: first word index
+//   - w1: last word index
+//   - headMask: mask for first word (may be partial)
+//   - tailMask: mask for last word (may be partial)
+//
+// For single-word ranges (w0 == w1), only headMask is meaningful (tailMask is 0).
+// For empty ranges (count == 0), all return values are 0.
+func wordMasksFromRange(start, count int) (w0, w1 int, headMask, tailMask uint64) {
+	if count == 0 {
+		return 0, 0, 0, 0
+	}
 
+	lastBit := start + count - 1
+
+	w0, off0 := wordIndex(start)
+	w1, off1 := wordIndex(lastBit)
+
+	// Single word case
 	if w0 == w1 {
-		headMask = MaskRange(uint(off0), uint(off1))
-		return
+		headMask = MaskRange(uint(off0), uint(off1+1))
+		return w0, w1, headMask, 0
 	}
 
-	if off0 != 0 {
-		headMask = MaskFrom(uint(off0))
-	}
-	if off1 != 0 {
-		tailMask = MaskUpto(uint(off1))
-	}
-	return
+	// Multi-word case
+	headMask = MaskFrom(uint(off0))
+	tailMask = MaskUpto(uint(off1 + 1))
+
+	return w0, w1, headMask, tailMask
 }
 
 // setRange sets bits in [start, start+count) to 1.
@@ -27,11 +38,8 @@ func (b *Bitmap) setRange(start, count int) {
 	if count == 0 {
 		return
 	}
-	end := start + count
-	w0, _ := wordIndex(start)
-	w1, _ := wordIndex(end)
 
-	headMask, tailMask := maskForRange(start, end)
+	w0, w1, headMask, tailMask := wordMasksFromRange(start, count)
 
 	// Single word case
 	if w0 == w1 {
@@ -39,20 +47,16 @@ func (b *Bitmap) setRange(start, count int) {
 		return
 	}
 
-	// Head partial word
-	if headMask != 0 {
-		b.words[w0] |= headMask
-	}
+	// Head word
+	b.words[w0] |= headMask
 
 	// Middle full words
 	for w := w0 + 1; w < w1; w++ {
 		b.words[w] = WordMask
 	}
 
-	// Tail partial word
-	if tailMask != 0 {
-		b.words[w1] |= tailMask
-	}
+	// Tail word
+	b.words[w1] |= tailMask
 }
 
 // clearRange clears bits in [start, start+count) to 0.
@@ -61,11 +65,8 @@ func (b *Bitmap) clearRange(start, count int) {
 	if count == 0 {
 		return
 	}
-	end := start + count
-	w0, _ := wordIndex(start)
-	w1, _ := wordIndex(end)
 
-	headMask, tailMask := maskForRange(start, end)
+	w0, w1, headMask, tailMask := wordMasksFromRange(start, count)
 
 	// Single word case
 	if w0 == w1 {
@@ -73,20 +74,16 @@ func (b *Bitmap) clearRange(start, count int) {
 		return
 	}
 
-	// Head partial word
-	if headMask != 0 {
-		b.words[w0] &^= headMask
-	}
+	// Head word
+	b.words[w0] &^= headMask
 
 	// Middle full words
 	for w := w0 + 1; w < w1; w++ {
 		b.words[w] = 0
 	}
 
-	// Tail partial word
-	if tailMask != 0 {
-		b.words[w1] &^= tailMask
-	}
+	// Tail word
+	b.words[w1] &^= tailMask
 }
 
 // copyRange copies count bits from src[srcStart:] to dst[dstStart:].

@@ -61,19 +61,15 @@ func (b *Bitmap) anyRange(start, count int) bool {
 		return false
 	}
 
-	end := start + count
-	w0, _ := wordIndex(start)
-	w1, _ := wordIndex(end)
-
-	headMask, tailMask := maskForRange(start, end)
+	w0, w1, headMask, tailMask := wordMasksFromRange(start, count)
 
 	// Single word case
 	if w0 == w1 {
 		return (b.words[w0] & headMask) != 0
 	}
 
-	// Check head partial word
-	if headMask != 0 && (b.words[w0]&headMask) != 0 {
+	// Check head word
+	if (b.words[w0] & headMask) != 0 {
 		return true
 	}
 
@@ -84,8 +80,8 @@ func (b *Bitmap) anyRange(start, count int) bool {
 		}
 	}
 
-	// Check tail partial word
-	if tailMask != 0 && (b.words[w1]&tailMask) != 0 {
+	// Check tail word
+	if (b.words[w1] & tailMask) != 0 {
 		return true
 	}
 
@@ -99,19 +95,15 @@ func (b *Bitmap) allRange(start, count int) bool {
 		return true // vacuously true for empty range
 	}
 
-	end := start + count
-	w0, _ := wordIndex(start)
-	w1, _ := wordIndex(end)
-
-	headMask, tailMask := maskForRange(start, end)
+	w0, w1, headMask, tailMask := wordMasksFromRange(start, count)
 
 	// Single word case
 	if w0 == w1 {
 		return (b.words[w0] & headMask) == headMask
 	}
 
-	// Check head partial word
-	if headMask != 0 && (b.words[w0]&headMask) != headMask {
+	// Check head word
+	if (b.words[w0] & headMask) != headMask {
 		return false
 	}
 
@@ -122,8 +114,8 @@ func (b *Bitmap) allRange(start, count int) bool {
 		}
 	}
 
-	// Check tail partial word
-	if tailMask != 0 && (b.words[w1]&tailMask) != tailMask {
+	// Check tail word
+	if (b.words[w1] & tailMask) != tailMask {
 		return false
 	}
 
@@ -137,11 +129,7 @@ func (b *Bitmap) countRange(start, count int) int {
 		return 0
 	}
 
-	end := start + count
-	w0, _ := wordIndex(start)
-	w1, _ := wordIndex(end)
-
-	headMask, tailMask := maskForRange(start, end)
+	w0, w1, headMask, tailMask := wordMasksFromRange(start, count)
 
 	// Single word case
 	if w0 == w1 {
@@ -150,20 +138,16 @@ func (b *Bitmap) countRange(start, count int) int {
 
 	sum := 0
 
-	// Count head partial word
-	if headMask != 0 {
-		sum += bits.OnesCount64(b.words[w0] & headMask)
-	}
+	// Count head word
+	sum += bits.OnesCount64(b.words[w0] & headMask)
 
 	// Count middle full words
 	for w := w0 + 1; w < w1; w++ {
 		sum += bits.OnesCount64(b.words[w])
 	}
 
-	// Count tail partial word
-	if tailMask != 0 {
-		sum += bits.OnesCount64(b.words[w1] & tailMask)
-	}
+	// Count tail word
+	sum += bits.OnesCount64(b.words[w1] & tailMask)
 
 	return sum
 }
