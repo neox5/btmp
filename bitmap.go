@@ -219,8 +219,9 @@ func (b *Bitmap) FlipBit(pos int) *Bitmap {
 // Returns *Bitmap for chaining.
 //
 // This method is primarily useful for initializing bitmaps from constants:
-//   b.SetBits(0, 16, 0xABCD)  // Set hex pattern
-//   b.SetBits(8, 4, 0b1010)   // Set binary pattern
+//
+//	b.SetBits(0, 16, 0xABCD)  // Set hex pattern
+//	b.SetBits(8, 4, 0b1010)   // Set binary pattern
 func (b *Bitmap) SetBits(pos, n int, val uint64) *Bitmap {
 	if err := validateNonNegative(pos, "pos"); err != nil {
 		panic(err.(*ValidationError).WithContext("Bitmap.SetBits"))
@@ -451,9 +452,4 @@ func (b *Bitmap) computeCache() {
 		return
 	}
 	b.tailMask = MaskUpto(r)
-}
-
-// wordIndex converts a bit index to (wordIdx, bitOffset).
-func wordIndex(i int) (w int, off int) {
-	return i >> WordShift, i & IndexMask
 }

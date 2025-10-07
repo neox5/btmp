@@ -1,89 +1,143 @@
 package btmp
 
-// wordMasksFromRange calculates word indices and bit masks for a range [start, start+count).
-// Returns:
-//   - w0: first word index
-//   - w1: last word index
-//   - headMask: mask for first word (may be partial)
-//   - tailMask: mask for last word (may be partial)
-//
-// For single-word ranges (w0 == w1), only headMask is meaningful (tailMask is 0).
-// For empty ranges (count == 0), all return values are 0.
-func wordMasksFromRange(start, count int) (w0, w1 int, headMask, tailMask uint64) {
-	if count == 0 {
-		return 0, 0, 0, 0
-	}
+import (
+	"iter"
+	"math/bits"
+)
 
-	lastBit := start + count - 1
+// ========================================
+// Range Helper Functions
+// ========================================
 
-	w0, off0 := wordIndex(start)
-	w1, off1 := wordIndex(lastBit)
-
-	// Single word case
-	if w0 == w1 {
-		headMask = MaskRange(uint(off0), uint(off1+1))
-		return w0, w1, headMask, 0
-	}
-
-	// Multi-word case
-	headMask = MaskFrom(uint(off0))
-	tailMask = MaskUpto(uint(off1 + 1))
-
-	return w0, w1, headMask, tailMask
+// wordIdx returns the word index for a bit position.
+func wordIdx(pos int) int {
+	return pos >> WordShift
 }
+
+// bitOffset returns the bit offset within a word [0, 63].
+func bitOffset(pos int) int {
+	return pos & IndexMask
+}
+
+// rangeWordIndices returns the first and last word indices for a bit range.
+func rangeWordIndices(start, count int) (w0, w1 int) {
+	if count == 0 {
+		return 0, -1
+	}
+	w0 = wordIdx(start)
+	w1 = wordIdx(start + count - 1)
+	return w0, w1
+}
+
+// headMaskForRange returns the mask for the first word of a range.
+func headMaskForRange(start, count int) uint64 {
+	if count == 0 {
+		return 0
+	}
+	startBit := bitOffset(start)
+	endBit := min(WordBits, startBit+count) - 1
+	return MaskRange(uint(startBit), uint(endBit+1))
+}
+
+// tailMaskForRange returns the mask for the last word of a range.
+func tailMaskForRange(start, count int) uint64 {
+	if count == 0 {
+		return 0
+	}
+	endBit := bitOffset(start + count - 1)
+	return MaskUpto(uint(endBit + 1))
+}
+
+// rangeWords returns an iterator over words in a range with masks.
+func (b *Bitmap) rangeWords(start, count int) iter.Seq2[*uint64, uint64] {
+	return func(yield func(*uint64, uint64) bool) {
+		if count == 0 {
+			return
+		}
+
+		w0, w1 := rangeWordIndices(start, count)
+
+		if w0 == w1 {
+			yield(&b.words[w0], headMaskForRange(start, count))
+			return
+		}
+
+		if !yield(&b.words[w0], headMaskForRange(start, count)) {
+			return
+		}
+
+		for w := w0 + 1; w < w1; w++ {
+			if !yield(&b.words[w], WordMask) {
+				return
+			}
+		}
+
+		yield(&b.words[w1], tailMaskForRange(start, count))
+	}
+}
+
+// ========================================
+// Range Operation Implementations
+// ========================================
 
 // setRange sets bits in [start, start+count) to 1.
 // Internal implementation - no validation, no auto-growth, no finalization.
 func (b *Bitmap) setRange(start, count int) {
-	if count == 0 {
-		return
+	for word, mask := range b.rangeWords(start, count) {
+		*word |= mask
 	}
-
-	w0, w1, headMask, tailMask := wordMasksFromRange(start, count)
-
-	// Single word case
-	if w0 == w1 {
-		b.words[w0] |= headMask
-		return
-	}
-
-	// Head word
-	b.words[w0] |= headMask
-
-	// Middle full words
-	for w := w0 + 1; w < w1; w++ {
-		b.words[w] = WordMask
-	}
-
-	// Tail word
-	b.words[w1] |= tailMask
 }
 
 // clearRange clears bits in [start, start+count) to 0.
 // Internal implementation - no validation, no auto-growth, no finalization.
 func (b *Bitmap) clearRange(start, count int) {
+	for word, mask := range b.rangeWords(start, count) {
+		*word &^= mask
+	}
+}
+
+// anyRange reports whether any bit in [start, start+count) is set.
+// Internal implementation - no validation.
+func (b *Bitmap) anyRange(start, count int) bool {
 	if count == 0 {
-		return
+		return false
 	}
 
-	w0, w1, headMask, tailMask := wordMasksFromRange(start, count)
+	for word, mask := range b.rangeWords(start, count) {
+		if (*word & mask) != 0 {
+			return true
+		}
+	}
+	return false
+}
 
-	// Single word case
-	if w0 == w1 {
-		b.words[w0] &^= headMask
-		return
+// allRange reports whether all bits in [start, start+count) are set.
+// Internal implementation - no validation.
+func (b *Bitmap) allRange(start, count int) bool {
+	if count == 0 {
+		return true // vacuously true for empty range
 	}
 
-	// Head word
-	b.words[w0] &^= headMask
+	for word, mask := range b.rangeWords(start, count) {
+		if (*word & mask) != mask {
+			return false
+		}
+	}
+	return true
+}
 
-	// Middle full words
-	for w := w0 + 1; w < w1; w++ {
-		b.words[w] = 0
+// countRange returns the number of set bits in [start, start+count).
+// Internal implementation - no validation.
+func (b *Bitmap) countRange(start, count int) int {
+	if count == 0 {
+		return 0
 	}
 
-	// Tail word
-	b.words[w1] &^= tailMask
+	sum := 0
+	for word, mask := range b.rangeWords(start, count) {
+		sum += bits.OnesCount64(*word & mask)
+	}
+	return sum
 }
 
 // copyRange copies count bits from src[srcStart:] to dst[dstStart:].
@@ -110,7 +164,6 @@ func needsBackwardCopy(srcStart, dstStart, count int) bool {
 }
 
 // copyBitRange performs the actual bit copying with proper direction handling.
-// Uses getBits/setBits from bitmap_bits.go for bit extraction and insertion.
 func copyBitRange(dst, src *Bitmap, srcStart, dstStart, count int, backward bool) {
 	remaining := count
 	sp := srcStart // source position
@@ -150,7 +203,6 @@ func copyBitRange(dst, src *Bitmap, srcStart, dstStart, count int, backward bool
 
 // moveRange moves bits from [srcStart, srcStart+count) to [dstStart, dstStart+count).
 // Internal implementation - no validation, no auto-growth, no finalization.
-// Equivalent to copyRange followed by clearing the non-overlapping source range.
 func (b *Bitmap) moveRange(srcStart, dstStart, count int) {
 	b.copyRange(b, srcStart, dstStart, count)
 	if count > 0 && srcStart != dstStart {

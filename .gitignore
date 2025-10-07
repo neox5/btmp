@@ -1,5 +1,9 @@
 # snap output
 **/snap.txt
 
+# benchmark
+*.test
+profile.out
+
 # coverage output
 cover.cov

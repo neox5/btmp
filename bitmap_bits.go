@@ -3,31 +3,29 @@ package btmp
 // setBit sets bit at position i to 1.
 // Internal implementation - no validation, no finalization.
 func (b *Bitmap) setBit(i int) {
-	w, off := wordIndex(i)
+	w := wordIdx(i)
+	off := bitOffset(i)
 	b.words[w] |= uint64(1) << off
 }
 
 // clearBit sets bit at position i to 0.
 // Internal implementation - no validation, no finalization.
 func (b *Bitmap) clearBit(i int) {
-	w, off := wordIndex(i)
+	w := wordIdx(i)
+	off := bitOffset(i)
 	b.words[w] &^= uint64(1) << off
 }
 
 // flipBit toggles bit at position i.
 // Internal implementation - no validation, no finalization.
 func (b *Bitmap) flipBit(i int) {
-	w, off := wordIndex(i)
+	w := wordIdx(i)
+	off := bitOffset(i)
 	b.words[w] ^= uint64(1) << off
 }
 
 // getBits extracts n bits starting from pos, returned right-aligned.
 // No validation performed - caller must ensure bounds.
-//
-// Fast paths:
-//   - Full word aligned: direct word access
-//   - Single word unaligned: shift and mask
-//   - Cross word: combine low bits from first word + high bits from second word
 func (b *Bitmap) getBits(pos, n int) uint64 {
 	// Fast path: full word aligned read
 	if n == WordBits && (pos&IndexMask) == 0 {
@@ -35,7 +33,8 @@ func (b *Bitmap) getBits(pos, n int) uint64 {
 		return b.words[w]
 	}
 
-	w, off := wordIndex(pos)
+	w := wordIdx(pos)
+	off := bitOffset(pos)
 
 	// Fast path: single word case
 	if off+n <= WordBits {
@@ -60,11 +59,6 @@ func (b *Bitmap) getBits(pos, n int) uint64 {
 
 // setBits inserts the low n bits of val into the bitmap starting at pos.
 // Preserves surrounding bits. No validation performed - caller must ensure bounds.
-//
-// Fast paths:
-//   - Full word aligned: direct word assignment
-//   - Single word unaligned: mask and insert
-//   - Cross word: split value between two words
 func (b *Bitmap) setBits(pos, n int, val uint64) {
 	// Fast path: full word aligned write
 	if n == WordBits && (pos&IndexMask) == 0 {
@@ -73,7 +67,8 @@ func (b *Bitmap) setBits(pos, n int, val uint64) {
 		return
 	}
 
-	w, off := wordIndex(pos)
+	w := wordIdx(pos)
+	off := bitOffset(pos)
 
 	// Mask val to exactly n bits to prevent overflow
 	maskedVal := val & MaskUpto(uint(n))
