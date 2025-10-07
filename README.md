@@ -87,27 +87,33 @@ go run examples/bitmap_print/main.go
 
 ## API
 
-**Bitmap** - 38 methods
-- Construction (1): `New`
-- Access (2): `Len`, `Words`
-- Growth (2): `EnsureBits`, `AddBits`
-- Query (7): `Test`, `Any`, `All`, `Count`, `AnyRange`, `AllRange`, `CountRange`
-- Validation (2): `ValidateInBounds`, `ValidateRange`
-- Single-bit (3): `SetBit`, `ClearBit`, `FlipBit`
-- Multi-bit (1): `SetBits`
-- Range (4): `SetRange`, `ClearRange`, `CopyRange`, `MoveRange`
-- Bulk (2): `SetAll`, `ClearAll`
-- Logic (4): `And`, `Or`, `Xor`, `Not`
-- Print (4): `Print`, `PrintRange`, `PrintFormat`, `PrintRangeFormat`
+### Bitmap (46 methods)
 
-**Grid** - 20 methods
-- Construction (2): `NewGrid`, `NewGridWithSize`
-- Access (3): `Cols`, `Rows`, `Index`
-- Growth (4): `EnsureCols`, `EnsureRows`, `GrowCols`, `GrowRows`
-- Query (5): `IsFree`, `CanShiftRight`, `CanShiftLeft`, `CanShiftUp`, `CanShiftDown`
-- Validation (2): `ValidateCoordinate`, `ValidateRect`
-- Rectangle (6): `SetRect`, `ClearRect`, `ShiftRect`
-- Print (1): `Print`
+| Category | Methods |
+|----------|---------|
+| **Construction** (1) | `New` |
+| **Access** (2) | `Len`, `Words` |
+| **Growth** (2) | `EnsureBits`, `AddBits` |
+| **Query** (15) | `Test`, `Any`, `All`, `Count`<br>`AnyRange`, `AllRange`, `CountRange`<br>`NextZero`, `NextOne`, `NextZeroInRange`, `NextOneInRange`<br>`CountZerosFrom`, `CountOnesFrom`, `CountZerosFromInRange`, `CountOnesFromInRange` |
+| **Validation** (2) | `ValidateInBounds`, `ValidateRange` |
+| **Single-bit** (3) | `SetBit`, `ClearBit`, `FlipBit` |
+| **Multi-bit** (1) | `SetBits` |
+| **Range** (4) | `SetRange`, `ClearRange`, `CopyRange`, `MoveRange` |
+| **Bulk** (2) | `SetAll`, `ClearAll` |
+| **Logic** (4) | `And`, `Or`, `Xor`, `Not` |
+| **Print** (4) | `Print`, `PrintRange`, `PrintFormat`, `PrintRangeFormat` |
+
+### Grid (20 methods)
+
+| Category | Methods |
+|----------|---------|
+| **Construction** (2) | `NewGrid`, `NewGridWithSize` |
+| **Access** (3) | `Cols`, `Rows`, `Index` |
+| **Growth** (4) | `EnsureCols`, `EnsureRows`, `GrowCols`, `GrowRows` |
+| **Query** (5) | `IsFree`, `CanShiftRight`, `CanShiftLeft`, `CanShiftUp`, `CanShiftDown` |
+| **Validation** (2) | `ValidateCoordinate`, `ValidateRect` |
+| **Rectangle** (6) | `SetRect`, `ClearRect`, `ShiftRectRight`, `ShiftRectLeft`, `ShiftRectUp`, `ShiftRectDown` |
+| **Print** (1) | `Print` |
 
 ## License
 

@@ -149,6 +149,110 @@ func (b *Bitmap) CountRange(start, count int) int {
 	return b.countRange(start, count)
 }
 
+// NextZero returns the position of the next zero bit at or after pos.
+// Returns -1 if no zero bit exists in [pos, Len()).
+// Panics if pos < 0 or pos >= Len().
+func (b *Bitmap) NextZero(pos int) int {
+	if err := validateNonNegative(pos, "pos"); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.NextZero"))
+	}
+	if err := b.validateInBounds(pos); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.NextZero"))
+	}
+
+	return b.nextZero(pos)
+}
+
+// NextOne returns the position of the next set bit at or after pos.
+// Returns -1 if no set bit exists in [pos, Len()).
+// Panics if pos < 0 or pos >= Len().
+func (b *Bitmap) NextOne(pos int) int {
+	if err := validateNonNegative(pos, "pos"); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.NextOne"))
+	}
+	if err := b.validateInBounds(pos); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.NextOne"))
+	}
+
+	return b.nextOne(pos)
+}
+
+// NextZeroInRange returns the position of the next zero bit in [pos, pos+count).
+// Returns -1 if no zero bit exists in range.
+// Panics if pos < 0, count <= 0, or pos+count > Len().
+func (b *Bitmap) NextZeroInRange(pos, count int) int {
+	if err := b.validateRange(pos, count); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.NextZeroInRange"))
+	}
+
+	return b.nextZeroInRange(pos, count)
+}
+
+// NextOneInRange returns the position of the next set bit in [pos, pos+count).
+// Returns -1 if no set bit exists in range.
+// Panics if pos < 0, count <= 0, or pos+count > Len().
+func (b *Bitmap) NextOneInRange(pos, count int) int {
+	if err := b.validateRange(pos, count); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.NextOneInRange"))
+	}
+
+	return b.nextOneInRange(pos, count)
+}
+
+// CountZerosFrom counts consecutive zero bits starting at pos.
+// Returns 0 if bit at pos is set.
+// Stops at first set bit or end of bitmap.
+// Panics if pos < 0 or pos >= Len().
+func (b *Bitmap) CountZerosFrom(pos int) int {
+	if err := validateNonNegative(pos, "pos"); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.CountZerosFrom"))
+	}
+	if err := b.validateInBounds(pos); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.CountZerosFrom"))
+	}
+
+	return b.countZerosFrom(pos)
+}
+
+// CountOnesFrom counts consecutive set bits starting at pos.
+// Returns 0 if bit at pos is clear.
+// Stops at first zero bit or end of bitmap.
+// Panics if pos < 0 or pos >= Len().
+func (b *Bitmap) CountOnesFrom(pos int) int {
+	if err := validateNonNegative(pos, "pos"); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.CountOnesFrom"))
+	}
+	if err := b.validateInBounds(pos); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.CountOnesFrom"))
+	}
+
+	return b.countOnesFrom(pos)
+}
+
+// CountZerosFromInRange counts consecutive zero bits starting at pos within [pos, pos+count).
+// Returns 0 if bit at pos is set.
+// Stops at first set bit or end of range.
+// Panics if pos < 0, count <= 0, or pos+count > Len().
+func (b *Bitmap) CountZerosFromInRange(pos, count int) int {
+	if err := b.validateRange(pos, count); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.CountZerosFromInRange"))
+	}
+
+	return b.countZerosFromInRange(pos, count)
+}
+
+// CountOnesFromInRange counts consecutive set bits starting at pos within [pos, pos+count).
+// Returns 0 if bit at pos is clear.
+// Stops at first zero bit or end of range.
+// Panics if pos < 0, count <= 0, or pos+count > Len().
+func (b *Bitmap) CountOnesFromInRange(pos, count int) int {
+	if err := b.validateRange(pos, count); err != nil {
+		panic(err.(*ValidationError).WithContext("Bitmap.CountOnesFromInRange"))
+	}
+
+	return b.countOnesFromInRange(pos, count)
+}
+
 // ========================================
 // Validation Operations
 // ========================================
