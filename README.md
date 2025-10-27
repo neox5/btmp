@@ -12,6 +12,8 @@
 
 btmp ("bitmap") is a pure Go bitmap library designed as a building block for your data structures. It provides tested, validated operations for manipulating dense boolean data without implementing bit math yourself.
 
+Grid serves as a full-featured reference implementation, demonstrating how to build zero-copy 2D data structures on the bitmap foundation.
+
 ### When NOT to use
 
 - **Sparse data** (< 1% density) → use `map[int]struct{}` or RoaringBitmap
