@@ -32,6 +32,7 @@ Grid serves as a full-featured reference implementation, demonstrating how to bu
 btmp abstracts away 64-bit word boundaries so you can work with bit positions directly. The library uses panics for validation failures - incorrect usage fails immediately at the source rather than propagating errors through your code.
 
 ## Install
+
 ```bash
 go get github.com/neox5/btmp
 ```
@@ -83,84 +84,89 @@ The `examples/` directory contains complete working examples:
 - **[grid_print](examples/grid_print/)** - Grid visualization and pattern creation
 
 To run an example:
+
 ```bash
 go run examples/bitmap_print/main.go
 ```
 
 ## API
 
-### Bitmap (46 methods)
+### Bitmap (40 methods)
 
-| Category | Method |
-|----------|--------|
-| **Construction** (1) | `New(n uint) *Bitmap` |
-| **Access** (2) | `Len() int` |
-| | `Words() []uint64` |
-| **Growth** (2) | `EnsureBits(n int) *Bitmap` |
-| | `AddBits(n int) *Bitmap` |
-| **Query** (15) | `Test(pos int) bool` |
-| | `Any() bool` |
-| | `All() bool` |
-| | `Count() int` |
-| | `AnyRange(start, count int) bool` |
-| | `AllRange(start, count int) bool` |
-| | `CountRange(start, count int) int` |
-| | `NextZero(pos int) int` |
-| | `NextOne(pos int) int` |
-| | `NextZeroInRange(pos, count int) int` |
-| | `NextOneInRange(pos, count int) int` |
-| | `CountZerosFrom(pos int) int` |
-| | `CountOnesFrom(pos int) int` |
-| | `CountZerosFromInRange(pos, count int) int` |
-| | `CountOnesFromInRange(pos, count int) int` |
-| **Validation** (2) | `ValidateInBounds(pos int) error` |
-| | `ValidateRange(start, count int) error` |
-| **Single-bit** (3) | `SetBit(pos int) *Bitmap` |
-| | `ClearBit(pos int) *Bitmap` |
-| | `FlipBit(pos int) *Bitmap` |
-| **Multi-bit** (1) | `SetBits(pos, n int, val uint64) *Bitmap` |
-| **Range** (4) | `SetRange(start, count int) *Bitmap` |
-| | `ClearRange(start, count int) *Bitmap` |
-| | `CopyRange(src *Bitmap, srcStart, dstStart, count int) *Bitmap` |
-| | `MoveRange(srcStart, dstStart, count int) *Bitmap` |
-| **Bulk** (2) | `SetAll() *Bitmap` |
-| | `ClearAll() *Bitmap` |
-| **Logic** (4) | `And(other *Bitmap) *Bitmap` |
-| | `Or(other *Bitmap) *Bitmap` |
-| | `Xor(other *Bitmap) *Bitmap` |
-| | `Not() *Bitmap` |
-| **Print** (4) | `Print() string` |
-| | `PrintRange(start, count int) string` |
-| | `PrintFormat(base int, grouped bool, groupSize int, sep string) string` |
-| | `PrintRangeFormat(start, count int, base int, grouped bool, groupSize int, sep string) string` |
+| Category             | Method                                                                                         |
+| -------------------- | ---------------------------------------------------------------------------------------------- |
+| **Construction** (1) | `New(n uint) *Bitmap`                                                                          |
+| **Access** (2)       | `Len() int`                                                                                    |
+|                      | `Words() []uint64`                                                                             |
+| **Growth** (2)       | `EnsureBits(n int) *Bitmap`                                                                    |
+|                      | `AddBits(n int) *Bitmap`                                                                       |
+| **Query** (15)       | `Test(pos int) bool`                                                                           |
+|                      | `Any() bool`                                                                                   |
+|                      | `All() bool`                                                                                   |
+|                      | `Count() int`                                                                                  |
+|                      | `AnyRange(start, count int) bool`                                                              |
+|                      | `AllRange(start, count int) bool`                                                              |
+|                      | `CountRange(start, count int) int`                                                             |
+|                      | `NextZero(pos int) int`                                                                        |
+|                      | `NextOne(pos int) int`                                                                         |
+|                      | `NextZeroInRange(pos, count int) int`                                                          |
+|                      | `NextOneInRange(pos, count int) int`                                                           |
+|                      | `CountZerosFrom(pos int) int`                                                                  |
+|                      | `CountOnesFrom(pos int) int`                                                                   |
+|                      | `CountZerosFromInRange(pos, count int) int`                                                    |
+|                      | `CountOnesFromInRange(pos, count int) int`                                                     |
+| **Validation** (2)   | `ValidateInBounds(pos int) error`                                                              |
+|                      | `ValidateRange(start, count int) error`                                                        |
+| **Single-bit** (3)   | `SetBit(pos int) *Bitmap`                                                                      |
+|                      | `ClearBit(pos int) *Bitmap`                                                                    |
+|                      | `FlipBit(pos int) *Bitmap`                                                                     |
+| **Multi-bit** (1)    | `SetBits(pos, n int, val uint64) *Bitmap`                                                      |
+| **Range** (4)        | `SetRange(start, count int) *Bitmap`                                                           |
+|                      | `ClearRange(start, count int) *Bitmap`                                                         |
+|                      | `CopyRange(src *Bitmap, srcStart, dstStart, count int) *Bitmap`                                |
+|                      | `MoveRange(srcStart, dstStart, count int) *Bitmap`                                             |
+| **Bulk** (2)         | `SetAll() *Bitmap`                                                                             |
+|                      | `ClearAll() *Bitmap`                                                                           |
+| **Logic** (4)        | `And(other *Bitmap) *Bitmap`                                                                   |
+|                      | `Or(other *Bitmap) *Bitmap`                                                                    |
+|                      | `Xor(other *Bitmap) *Bitmap`                                                                   |
+|                      | `Not() *Bitmap`                                                                                |
+| **Print** (4)        | `Print() string`                                                                               |
+|                      | `PrintRange(start, count int) string`                                                          |
+|                      | `PrintFormat(base int, grouped bool, groupSize int, sep string) string`                        |
+|                      | `PrintRangeFormat(start, count int, base int, grouped bool, groupSize int, sep string) string` |
 
-### Grid (20 methods)
+### Grid (27 methods)
 
-| Category | Method |
-|----------|--------|
-| **Construction** (2) | `NewGrid() *Grid` |
-| | `NewGridWithSize(rows, cols int) *Grid` |
-| **Access** (3) | `Cols() int` |
-| | `Rows() int` |
-| | `Index(r, c int) int` |
-| **Growth** (4) | `EnsureCols(cols int) *Grid` |
-| | `EnsureRows(rows int) *Grid` |
-| | `GrowCols(delta int) *Grid` |
-| | `GrowRows(delta int) *Grid` |
-| **Query** (5) | `IsFree(r, c, h, w int) bool` |
-| | `CanShiftRight(r, c, h, w int) bool` |
-| | `CanShiftLeft(r, c, h, w int) bool` |
-| | `CanShiftUp(r, c, h, w int) bool` |
-| | `CanShiftDown(r, c, h, w int) bool` |
-| **Validation** (2) | `ValidateCoordinate(r, c int) error` |
-| | `ValidateRect(r, c, h, w int) error` |
-| **Rectangle** (6) | `SetRect(r, c, h, w int) *Grid` |
-| | `ClearRect(r, c, h, w int) *Grid` |
-| | `ShiftRectRight(r, c, h, w int) *Grid` |
-| | `ShiftRectLeft(r, c, h, w int) *Grid` |
-| | `ShiftRectUp(r, c, h, w int) *Grid` |
-| | `ShiftRectDown(r, c, h, w int) *Grid` |
-| **Print** (1) | `Print() string` |
+| Category             | Method                                    |
+| -------------------- | ----------------------------------------- |
+| **Construction** (2) | `NewGrid() *Grid`                         |
+|                      | `NewGridWithSize(rows, cols int) *Grid`   |
+| **Access** (3)       | `Cols() int`                              |
+|                      | `Rows() int`                              |
+|                      | `Index(r, c int) int`                     |
+| **Growth** (4)       | `EnsureCols(cols int) *Grid`              |
+|                      | `EnsureRows(rows int) *Grid`              |
+|                      | `GrowCols(delta int) *Grid`               |
+|                      | `GrowRows(delta int) *Grid`               |
+| **Query** (9)        | `IsFree(r, c, h, w int) bool`             |
+|                      | `CanShiftRight(r, c, h, w int) bool`      |
+|                      | `CanShiftLeft(r, c, h, w int) bool`       |
+|                      | `CanShiftUp(r, c, h, w int) bool`         |
+|                      | `CanShiftDown(r, c, h, w int) bool`       |
+|                      | `NextFreeCol(r, c int) int`               |
+|                      | `NextFreeColInRange(r, c, count int) int` |
+|                      | `FreeColsFrom(r, c int) int`              |
+|                      | `CanFitWidth(r, c, w int) bool`           |
+| **Validation** (2)   | `ValidateCoordinate(r, c int) error`      |
+|                      | `ValidateRect(r, c, h, w int) error`      |
+| **Rectangle** (6)    | `SetRect(r, c, h, w int) *Grid`           |
+|                      | `ClearRect(r, c, h, w int) *Grid`         |
+|                      | `ShiftRectRight(r, c, h, w int) *Grid`    |
+|                      | `ShiftRectLeft(r, c, h, w int) *Grid`     |
+|                      | `ShiftRectUp(r, c, h, w int) *Grid`       |
+|                      | `ShiftRectDown(r, c, h, w int) *Grid`     |
+| **Print** (1)        | `Print() string`                          |
 
 ## License
 
