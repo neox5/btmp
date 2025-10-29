@@ -166,6 +166,57 @@ func (g *Grid) CanShiftDown(r, c, h, w int) bool {
 	return g.canShiftDown(r, c, h, w)
 }
 
+// NextFreeCol returns the column index of the next unoccupied cell in row r,
+// starting search from column c.
+// Returns -1 if no free column exists in [c, Cols()).
+// Panics if r < 0, c < 0, r >= Rows(), or c >= Cols().
+func (g *Grid) NextFreeCol(r, c int) int {
+	if err := g.validateCoordinate(r, c); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.NextFreeCol"))
+	}
+	return g.nextFreeCol(r, c)
+}
+
+// NextFreeColInRange returns the column index of the next unoccupied cell in row r,
+// searching within [c, c+count).
+// Returns -1 if no free column exists in range.
+// Panics if r < 0, c < 0, count <= 0, r >= Rows(), or c >= Cols().
+func (g *Grid) NextFreeColInRange(r, c, count int) int {
+	if err := g.validateCoordinate(r, c); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.NextFreeColInRange"))
+	}
+	if err := validatePositive(count, "count"); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.NextFreeColInRange"))
+	}
+	return g.nextFreeColInRange(r, c, count)
+}
+
+// FreeColsFrom returns the count of consecutive unoccupied columns in row r
+// starting at column c.
+// Returns 0 if cell at (r,c) is occupied.
+// Stops at first occupied cell or end of row.
+// Panics if r < 0, c < 0, r >= Rows(), or c >= Cols().
+func (g *Grid) FreeColsFrom(r, c int) int {
+	if err := g.validateCoordinate(r, c); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.FreeColsFrom"))
+	}
+	return g.freeColsFrom(r, c)
+}
+
+// CanFitWidth reports whether a cell with width w can fit in row r starting at
+// column c (i.e., whether columns [c, c+w) contain only unoccupied cells).
+// Returns false if any cell in the range is occupied or if c+w exceeds Cols().
+// Panics if r < 0, c < 0, w <= 0, r >= Rows(), or c >= Cols().
+func (g *Grid) CanFitWidth(r, c, w int) bool {
+	if err := g.validateCoordinate(r, c); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.CanFitWidth"))
+	}
+	if err := validatePositive(w, "w"); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.CanFitWidth"))
+	}
+	return g.canFitWidth(r, c, w)
+}
+
 // ========================================
 // Validation Operations
 // ========================================
