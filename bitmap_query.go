@@ -187,12 +187,15 @@ func (b *Bitmap) countBitsFromInRange(pos, count int, target bool) int {
 
 		// Find first non-matching bit
 		inverted := (^matched) & mask
-		tz := bits.TrailingZeros64(inverted)
 		bitsInMask := bits.OnesCount64(mask)
 
-		if tz < bitsInMask {
-			// Found a non-matching bit
-			bitCount += tz
+		if inverted != 0 {
+			// Found a non-matching bit within this masked region
+			// Calculate how many bits matched before the non-match
+			tz := bits.TrailingZeros64(inverted)
+			maskStart := bits.TrailingZeros64(mask)
+			bitsBeforeNonMatch := tz - maskStart
+			bitCount += bitsBeforeNonMatch
 			break
 		}
 
