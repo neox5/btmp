@@ -1206,3 +1206,271 @@ func TestGridCanFitWidth(t *testing.T) {
 		g.CanFitWidth(5, 10, 5)
 	})
 }
+
+// TestGridAllGrid validates Grid.AllGrid() query operation behavior.
+func TestGridAllGrid(t *testing.T) {
+	t.Run("returns true when all bits set", func(t *testing.T) {
+		g := btmp.NewGridWithSize(5, 5)
+		g.B.SetAll()
+
+		if !g.AllGrid() {
+			t.Error("expected true when all bits set")
+		}
+	})
+
+	t.Run("returns false when no bits set", func(t *testing.T) {
+		g := btmp.NewGridWithSize(5, 5)
+
+		if g.AllGrid() {
+			t.Error("expected false when no bits set")
+		}
+	})
+
+	t.Run("returns false when single bit clear", func(t *testing.T) {
+		g := btmp.NewGridWithSize(5, 5)
+		g.B.SetAll()
+		g.B.ClearBit(g.Index(2, 2))
+
+		if g.AllGrid() {
+			t.Error("expected false when single bit clear")
+		}
+	})
+
+	t.Run("returns false when first bit clear", func(t *testing.T) {
+		g := btmp.NewGridWithSize(5, 5)
+		g.B.SetAll()
+		g.B.ClearBit(0)
+
+		if g.AllGrid() {
+			t.Error("expected false when first bit clear")
+		}
+	})
+
+	t.Run("returns false when last bit clear", func(t *testing.T) {
+		g := btmp.NewGridWithSize(5, 5)
+		g.B.SetAll()
+		g.B.ClearBit(g.Index(4, 4))
+
+		if g.AllGrid() {
+			t.Error("expected false when last bit clear")
+		}
+	})
+
+	t.Run("returns false for empty grid zero rows", func(t *testing.T) {
+		g := btmp.NewGridWithSize(0, 10)
+
+		if g.AllGrid() {
+			t.Error("expected false for empty grid (0 rows)")
+		}
+	})
+
+	t.Run("returns false for empty grid zero cols", func(t *testing.T) {
+		g := btmp.NewGridWithSize(10, 0)
+
+		if g.AllGrid() {
+			t.Error("expected false for empty grid (0 cols)")
+		}
+	})
+
+	t.Run("returns false for empty grid zero both", func(t *testing.T) {
+		g := btmp.NewGrid()
+
+		if g.AllGrid() {
+			t.Error("expected false for empty grid (0x0)")
+		}
+	})
+
+	t.Run("single cell set", func(t *testing.T) {
+		g := btmp.NewGridWithSize(1, 1)
+		g.B.SetBit(0)
+
+		if !g.AllGrid() {
+			t.Error("expected true for single set cell")
+		}
+	})
+
+	t.Run("single cell clear", func(t *testing.T) {
+		g := btmp.NewGridWithSize(1, 1)
+
+		if g.AllGrid() {
+			t.Error("expected false for single clear cell")
+		}
+	})
+
+	t.Run("large grid all set", func(t *testing.T) {
+		g := btmp.NewGridWithSize(100, 100)
+		g.B.SetAll()
+
+		if !g.AllGrid() {
+			t.Error("expected true for large grid all set")
+		}
+	})
+
+	t.Run("large grid one clear", func(t *testing.T) {
+		g := btmp.NewGridWithSize(100, 100)
+		g.B.SetAll()
+		g.B.ClearBit(g.Index(50, 50))
+
+		if g.AllGrid() {
+			t.Error("expected false for large grid with one clear")
+		}
+	})
+}
+
+// TestGridAllRow validates Grid.AllRow() query operation behavior.
+func TestGridAllRow(t *testing.T) {
+	t.Run("returns true when entire row set", func(t *testing.T) {
+		g := btmp.NewGridWithSize(5, 10)
+		g.SetRect(2, 0, 1, 10) // Fill row 2
+
+		if !g.AllRow(2) {
+			t.Error("expected true when entire row set")
+		}
+	})
+
+	t.Run("returns false when entire row clear", func(t *testing.T) {
+		g := btmp.NewGridWithSize(5, 10)
+
+		if g.AllRow(2) {
+			t.Error("expected false when entire row clear")
+		}
+	})
+
+	t.Run("returns false when single bit clear", func(t *testing.T) {
+		g := btmp.NewGridWithSize(5, 10)
+		g.SetRect(2, 0, 1, 10)
+		g.B.ClearBit(g.Index(2, 5)) // Clear one bit in row 2
+
+		if g.AllRow(2) {
+			t.Error("expected false when single bit clear")
+		}
+	})
+
+	t.Run("returns false when first bit clear", func(t *testing.T) {
+		g := btmp.NewGridWithSize(5, 10)
+		g.SetRect(2, 0, 1, 10)
+		g.B.ClearBit(g.Index(2, 0))
+
+		if g.AllRow(2) {
+			t.Error("expected false when first bit clear")
+		}
+	})
+
+	t.Run("returns false when last bit clear", func(t *testing.T) {
+		g := btmp.NewGridWithSize(5, 10)
+		g.SetRect(2, 0, 1, 10)
+		g.B.ClearBit(g.Index(2, 9))
+
+		if g.AllRow(2) {
+			t.Error("expected false when last bit clear")
+		}
+	})
+
+	t.Run("first row all set", func(t *testing.T) {
+		g := btmp.NewGridWithSize(5, 10)
+		g.SetRect(0, 0, 1, 10)
+
+		if !g.AllRow(0) {
+			t.Error("expected true for first row all set")
+		}
+	})
+
+	t.Run("last row all set", func(t *testing.T) {
+		g := btmp.NewGridWithSize(5, 10)
+		g.SetRect(4, 0, 1, 10)
+
+		if !g.AllRow(4) {
+			t.Error("expected true for last row all set")
+		}
+	})
+
+	t.Run("other rows do not affect result", func(t *testing.T) {
+		g := btmp.NewGridWithSize(5, 10)
+		g.B.SetAll()             // Set all bits
+		g.ClearRect(2, 0, 1, 10) // Clear row 2
+
+		if g.AllRow(2) {
+			t.Error("expected false for cleared row")
+		}
+		if !g.AllRow(1) {
+			t.Error("expected true for adjacent row")
+		}
+		if !g.AllRow(3) {
+			t.Error("expected true for adjacent row")
+		}
+	})
+
+	t.Run("single column grid", func(t *testing.T) {
+		g := btmp.NewGridWithSize(5, 1)
+		g.B.SetBit(g.Index(2, 0))
+
+		if !g.AllRow(2) {
+			t.Error("expected true for single column row set")
+		}
+	})
+
+	t.Run("single column grid clear", func(t *testing.T) {
+		g := btmp.NewGridWithSize(5, 1)
+
+		if g.AllRow(2) {
+			t.Error("expected false for single column row clear")
+		}
+	})
+
+	t.Run("returns false for empty row zero cols", func(t *testing.T) {
+		g := btmp.NewGridWithSize(5, 0)
+
+		if g.AllRow(0) {
+			t.Error("expected false for empty row (0 cols)")
+		}
+	})
+
+	t.Run("wide row all set", func(t *testing.T) {
+		g := btmp.NewGridWithSize(3, 200)
+		g.SetRect(1, 0, 1, 200)
+
+		if !g.AllRow(1) {
+			t.Error("expected true for wide row all set")
+		}
+	})
+
+	t.Run("wide row one clear", func(t *testing.T) {
+		g := btmp.NewGridWithSize(3, 200)
+		g.SetRect(1, 0, 1, 200)
+		g.B.ClearBit(g.Index(1, 100))
+
+		if g.AllRow(1) {
+			t.Error("expected false for wide row with one clear")
+		}
+	})
+
+	t.Run("panics on negative r", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected panic for negative r")
+			}
+		}()
+		g := btmp.NewGridWithSize(5, 10)
+		g.AllRow(-1)
+	})
+
+	t.Run("panics on r equals rows", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected panic for r >= Rows()")
+			}
+		}()
+		g := btmp.NewGridWithSize(5, 10)
+		g.AllRow(5)
+	})
+
+	t.Run("panics on r exceeds rows", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected panic for r >= Rows()")
+			}
+		}()
+		g := btmp.NewGridWithSize(5, 10)
+		g.AllRow(10)
+	})
+}

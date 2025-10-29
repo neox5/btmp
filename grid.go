@@ -217,6 +217,30 @@ func (g *Grid) CanFitWidth(r, c, w int) bool {
 	return g.canFitWidth(r, c, w)
 }
 
+// AllGrid returns true if all bits in the grid are set.
+// Returns false for empty grid (0 rows or 0 columns).
+func (g *Grid) AllGrid() bool {
+	return g.allGrid()
+}
+
+// AllRow returns true if all bits in row r are set.
+// Returns false for empty row (Cols() == 0).
+// Panics if r < 0 or r >= Rows().
+func (g *Grid) AllRow(r int) bool {
+	if err := validateNonNegative(r, "r"); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.AllRow"))
+	}
+	if r >= g.rows {
+		panic(&ValidationError{
+			Field:   "r",
+			Value:   r,
+			Message: "out of bounds",
+			Context: "Grid.AllRow",
+		})
+	}
+	return g.allRow(r)
+}
+
 // ========================================
 // Validation Operations
 // ========================================

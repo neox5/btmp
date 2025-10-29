@@ -141,3 +141,29 @@ func (g *Grid) canFitWidth(r, c, w int) bool {
 	// Check if all bits in range are zero (unoccupied)
 	return !g.B.anyRange(start, w)
 }
+
+// allGrid returns true if all bits in the grid are set.
+// Returns false for empty grid.
+// Internal helper - no validation.
+func (g *Grid) allGrid() bool {
+	// Empty grid has no bits to check
+	if g.rows == 0 || g.cols == 0 {
+		return false
+	}
+
+	// Delegate to bitmap's All() method
+	return g.B.All()
+}
+
+// allRow returns true if all bits in row r are set.
+// Returns false for empty row.
+// Internal helper - no validation.
+func (g *Grid) allRow(r int) bool {
+	// Empty row has no bits to check
+	if g.cols == 0 {
+		return false
+	}
+
+	start := g.rowStart(r)
+	return g.B.AllRange(start, g.cols)
+}

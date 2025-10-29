@@ -136,7 +136,7 @@ go run examples/bitmap_print/main.go
 |                      | `PrintFormat(base int, grouped bool, groupSize int, sep string) string`                        |
 |                      | `PrintRangeFormat(start, count int, base int, grouped bool, groupSize int, sep string) string` |
 
-### Grid (27 methods)
+### Grid (29 methods)
 
 | Category             | Method                                    |
 | -------------------- | ----------------------------------------- |
@@ -149,7 +149,7 @@ go run examples/bitmap_print/main.go
 |                      | `EnsureRows(rows int) *Grid`              |
 |                      | `GrowCols(delta int) *Grid`               |
 |                      | `GrowRows(delta int) *Grid`               |
-| **Query** (9)        | `IsFree(r, c, h, w int) bool`             |
+| **Query** (11)       | `IsFree(r, c, h, w int) bool`             |
 |                      | `CanShiftRight(r, c, h, w int) bool`      |
 |                      | `CanShiftLeft(r, c, h, w int) bool`       |
 |                      | `CanShiftUp(r, c, h, w int) bool`         |
@@ -158,6 +158,8 @@ go run examples/bitmap_print/main.go
 |                      | `NextFreeColInRange(r, c, count int) int` |
 |                      | `FreeColsFrom(r, c int) int`              |
 |                      | `CanFitWidth(r, c, w int) bool`           |
+|                      | `AllGrid() bool`                          |
+|                      | `AllRow(r int) bool`                      |
 | **Validation** (2)   | `ValidateCoordinate(r, c int) error`      |
 |                      | `ValidateRect(r, c, h, w int) error`      |
 | **Rectangle** (6)    | `SetRect(r, c, h, w int) *Grid`           |
