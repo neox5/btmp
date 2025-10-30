@@ -136,39 +136,41 @@ go run examples/bitmap_print/main.go
 |                      | `PrintFormat(base int, grouped bool, groupSize int, sep string) string`                        |
 |                      | `PrintRangeFormat(start, count int, base int, grouped bool, groupSize int, sep string) string` |
 
-### Grid (29 methods)
+### Grid (30 methods)
 
-| Category             | Method                                    |
-| -------------------- | ----------------------------------------- |
-| **Construction** (2) | `NewGrid() *Grid`                         |
-|                      | `NewGridWithSize(rows, cols int) *Grid`   |
-| **Access** (3)       | `Cols() int`                              |
-|                      | `Rows() int`                              |
-|                      | `Index(r, c int) int`                     |
-| **Growth** (4)       | `EnsureCols(cols int) *Grid`              |
-|                      | `EnsureRows(rows int) *Grid`              |
-|                      | `GrowCols(delta int) *Grid`               |
-|                      | `GrowRows(delta int) *Grid`               |
-| **Query** (11)       | `IsFree(r, c, h, w int) bool`             |
-|                      | `CanShiftRight(r, c, h, w int) bool`      |
-|                      | `CanShiftLeft(r, c, h, w int) bool`       |
-|                      | `CanShiftUp(r, c, h, w int) bool`         |
-|                      | `CanShiftDown(r, c, h, w int) bool`       |
-|                      | `NextFreeCol(r, c int) int`               |
-|                      | `NextFreeColInRange(r, c, count int) int` |
-|                      | `FreeColsFrom(r, c int) int`              |
-|                      | `CanFitWidth(r, c, w int) bool`           |
-|                      | `AllGrid() bool`                          |
-|                      | `AllRow(r int) bool`                      |
-| **Validation** (2)   | `ValidateCoordinate(r, c int) error`      |
-|                      | `ValidateRect(r, c, h, w int) error`      |
-| **Rectangle** (6)    | `SetRect(r, c, h, w int) *Grid`           |
-|                      | `ClearRect(r, c, h, w int) *Grid`         |
-|                      | `ShiftRectRight(r, c, h, w int) *Grid`    |
-|                      | `ShiftRectLeft(r, c, h, w int) *Grid`     |
-|                      | `ShiftRectUp(r, c, h, w int) *Grid`       |
-|                      | `ShiftRectDown(r, c, h, w int) *Grid`     |
-| **Print** (1)        | `Print() string`                          |
+| Category                   | Method                                         |
+| -------------------------- | ---------------------------------------------- |
+| **Construction** (2)       | `NewGrid() *Grid`                              |
+|                            | `NewGridWithSize(rows, cols int) *Grid`        |
+| **Access** (4)             | `Rows() int`                                   |
+|                            | `Cols() int`                                   |
+|                            | `Index(r, c int) int`                          |
+|                            | `Coord(pos int) (r, c int)`                    |
+| **Growth** (4)             | `EnsureRows(rows int) *Grid`                   |
+|                            | `AddRows(rows int) *Grid`                      |
+|                            | `EnsureCols(cols int) *Grid`                   |
+|                            | `AddCols(cols int) *Grid`                      |
+| **Query** (14)             | `IsFree(r, c, h, w int) bool`                  |
+|                            | `CanShiftRight(r, c, h, w int) bool`           |
+|                            | `CanShiftLeft(r, c, h, w int) bool`            |
+|                            | `CanShiftUp(r, c, h, w int) bool`              |
+|                            | `CanShiftDown(r, c, h, w int) bool`            |
+|                            | `NextFreeCol(r, c int) int`                    |
+|                            | `NextFreeColInRange(r, c, count int) int`      |
+|                            | `FreeColsFrom(r, c int) int`                   |
+|                            | `CanFitWidth(r, c, w int) bool`                |
+|                            | `CanFit(r, c, h, w int) (fitRow, fitCol bool)` |
+|                            | `AllGrid() bool`                               |
+|                            | `AllRow(r int) bool`                           |
+| **Validation** (2)         | `ValidateCoordinate(r, c int) error`           |
+|                            | `ValidateRect(r, c, h, w int) error`           |
+| **Rectangle Mutators** (6) | `SetRect(r, c, h, w int) *Grid`                |
+|                            | `ClearRect(r, c, h, w int) *Grid`              |
+|                            | `ShiftRectRight(r, c, h, w int) *Grid`         |
+|                            | `ShiftRectLeft(r, c, h, w int) *Grid`          |
+|                            | `ShiftRectUp(r, c, h, w int) *Grid`            |
+|                            | `ShiftRectDown(r, c, h, w int) *Grid`          |
+| **Print** (1)              | `Print() string`                               |
 
 ## License
 

@@ -1207,6 +1207,234 @@ func TestGridCanFitWidth(t *testing.T) {
 	})
 }
 
+// TestGridCanFit validates Grid.CanFit() boundary checking behavior.
+func TestGridCanFit(t *testing.T) {
+	t.Run("returns true, true when rectangle fits exactly", func(t *testing.T) {
+		g := btmp.NewGridWithSize(10, 10)
+
+		fitRow, fitCol := g.CanFit(0, 0, 10, 10)
+		if !fitRow || !fitCol {
+			t.Errorf("expected true, true for 10x10 rect in 10x10 grid, got %v, %v", fitRow, fitCol)
+		}
+	})
+
+	t.Run("returns true, true when rectangle fits with space", func(t *testing.T) {
+		g := btmp.NewGridWithSize(10, 10)
+
+		fitRow, fitCol := g.CanFit(2, 3, 5, 4)
+		if !fitRow || !fitCol {
+			t.Errorf("expected true, true for 5x4 rect at (2,3) in 10x10 grid, got %v, %v", fitRow, fitCol)
+		}
+	})
+
+	t.Run("returns true, true for single cell at origin", func(t *testing.T) {
+		g := btmp.NewGridWithSize(10, 10)
+
+		fitRow, fitCol := g.CanFit(0, 0, 1, 1)
+		if !fitRow || !fitCol {
+			t.Errorf("expected true, true for 1x1 rect at (0,0), got %v, %v", fitRow, fitCol)
+		}
+	})
+
+	t.Run("returns true, true for single cell at corner", func(t *testing.T) {
+		g := btmp.NewGridWithSize(10, 10)
+
+		fitRow, fitCol := g.CanFit(9, 9, 1, 1)
+		if !fitRow || !fitCol {
+			t.Errorf("expected true, true for 1x1 rect at (9,9), got %v, %v", fitRow, fitCol)
+		}
+	})
+
+	t.Run("returns true, true for zero height rectangle", func(t *testing.T) {
+		g := btmp.NewGridWithSize(10, 10)
+
+		fitRow, fitCol := g.CanFit(5, 5, 0, 5)
+		if !fitRow || !fitCol {
+			t.Errorf("expected true, true for zero height rectangle, got %v, %v", fitRow, fitCol)
+		}
+	})
+
+	t.Run("returns true, true for zero width rectangle", func(t *testing.T) {
+		g := btmp.NewGridWithSize(10, 10)
+
+		fitRow, fitCol := g.CanFit(5, 5, 5, 0)
+		if !fitRow || !fitCol {
+			t.Errorf("expected true, true for zero width rectangle, got %v, %v", fitRow, fitCol)
+		}
+	})
+
+	t.Run("returns true, true for zero size rectangle", func(t *testing.T) {
+		g := btmp.NewGridWithSize(10, 10)
+
+		fitRow, fitCol := g.CanFit(5, 5, 0, 0)
+		if !fitRow || !fitCol {
+			t.Errorf("expected true, true for zero size rectangle, got %v, %v", fitRow, fitCol)
+		}
+	})
+
+	t.Run("returns false, true when height exceeds bounds", func(t *testing.T) {
+		g := btmp.NewGridWithSize(10, 10)
+
+		fitRow, fitCol := g.CanFit(5, 3, 6, 4)
+		if fitRow {
+			t.Error("expected fitRow=false when r+h > Rows (5+6=11 > 10)")
+		}
+		if !fitCol {
+			t.Error("expected fitCol=true when c+w <= Cols (3+4=7 <= 10)")
+		}
+	})
+
+	t.Run("returns true, false when width exceeds bounds", func(t *testing.T) {
+		g := btmp.NewGridWithSize(10, 10)
+
+		fitRow, fitCol := g.CanFit(3, 5, 4, 6)
+		if !fitRow {
+			t.Error("expected fitRow=true when r+h <= Rows (3+4=7 <= 10)")
+		}
+		if fitCol {
+			t.Error("expected fitCol=false when c+w > Cols (5+6=11 > 10)")
+		}
+	})
+
+	t.Run("returns false, false when both dimensions exceed bounds", func(t *testing.T) {
+		g := btmp.NewGridWithSize(10, 10)
+
+		fitRow, fitCol := g.CanFit(8, 8, 5, 5)
+		if fitRow {
+			t.Error("expected fitRow=false when r+h > Rows (8+5=13 > 10)")
+		}
+		if fitCol {
+			t.Error("expected fitCol=false when c+w > Cols (8+5=13 > 10)")
+		}
+	})
+
+	t.Run("returns false, true when height exactly exceeds by one", func(t *testing.T) {
+		g := btmp.NewGridWithSize(10, 10)
+
+		fitRow, fitCol := g.CanFit(0, 0, 11, 5)
+		if fitRow {
+			t.Error("expected fitRow=false when r+h=11 > 10")
+		}
+		if !fitCol {
+			t.Error("expected fitCol=true when c+w=5 <= 10")
+		}
+	})
+
+	t.Run("returns true, false when width exactly exceeds by one", func(t *testing.T) {
+		g := btmp.NewGridWithSize(10, 10)
+
+		fitRow, fitCol := g.CanFit(0, 0, 5, 11)
+		if !fitRow {
+			t.Error("expected fitRow=true when r+h=5 <= 10")
+		}
+		if fitCol {
+			t.Error("expected fitCol=false when c+w=11 > 10")
+		}
+	})
+
+	t.Run("does not check cell occupancy", func(t *testing.T) {
+		g := btmp.NewGridWithSize(10, 10)
+		g.SetRect(2, 3, 5, 4) // Occupy the target area
+
+		// Should still return true, true since CanFit only checks boundaries
+		fitRow, fitCol := g.CanFit(2, 3, 5, 4)
+		if !fitRow || !fitCol {
+			t.Errorf("expected true, true regardless of cell occupancy, got %v, %v", fitRow, fitCol)
+		}
+	})
+
+	t.Run("returns true, true at exact boundary", func(t *testing.T) {
+		g := btmp.NewGridWithSize(10, 10)
+
+		fitRow, fitCol := g.CanFit(5, 5, 5, 5)
+		if !fitRow || !fitCol {
+			t.Errorf("expected true, true when r+h=10 and c+w=10, got %v, %v", fitRow, fitCol)
+		}
+	})
+
+	t.Run("independent row and column checks", func(t *testing.T) {
+		g := btmp.NewGridWithSize(10, 15)
+
+		// Height exceeds, width fits
+		fitRow, fitCol := g.CanFit(8, 5, 5, 5)
+		if fitRow {
+			t.Error("expected fitRow=false when r+h=13 > 10")
+		}
+		if !fitCol {
+			t.Error("expected fitCol=true when c+w=10 <= 15")
+		}
+
+		// Height fits, width exceeds
+		fitRow, fitCol = g.CanFit(5, 12, 5, 5)
+		if !fitRow {
+			t.Error("expected fitRow=true when r+h=10 <= 10")
+		}
+		if fitCol {
+			t.Error("expected fitCol=false when c+w=17 > 15")
+		}
+	})
+
+	t.Run("panics on negative r", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected panic for negative r")
+			}
+		}()
+		g := btmp.NewGridWithSize(10, 10)
+		g.CanFit(-1, 5, 3, 3)
+	})
+
+	t.Run("panics on negative c", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected panic for negative c")
+			}
+		}()
+		g := btmp.NewGridWithSize(10, 10)
+		g.CanFit(5, -1, 3, 3)
+	})
+
+	t.Run("panics on negative h", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected panic for negative h")
+			}
+		}()
+		g := btmp.NewGridWithSize(10, 10)
+		g.CanFit(5, 5, -1, 3)
+	})
+
+	t.Run("panics on negative w", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected panic for negative w")
+			}
+		}()
+		g := btmp.NewGridWithSize(10, 10)
+		g.CanFit(5, 5, 3, -1)
+	})
+
+	t.Run("panics when r >= Rows", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected panic for r >= Rows")
+			}
+		}()
+		g := btmp.NewGridWithSize(10, 10)
+		g.CanFit(10, 5, 3, 3)
+	})
+
+	t.Run("panics when c >= Cols", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("expected panic for c >= Cols")
+			}
+		}()
+		g := btmp.NewGridWithSize(10, 10)
+		g.CanFit(5, 10, 3, 3)
+	})
+}
+
 // TestGridAllGrid validates Grid.AllGrid() query operation behavior.
 func TestGridAllGrid(t *testing.T) {
 	t.Run("returns true when all bits set", func(t *testing.T) {

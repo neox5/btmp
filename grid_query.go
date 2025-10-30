@@ -15,7 +15,7 @@ func (g *Grid) rowStart(r int) int {
 // ========================================
 
 // isFree reports whether the specified rectangle contains only zeros.
-// Internal helper - no validation, assumes valid bounds.
+// Internal implementation - no validation, assumes valid bounds.
 func (g *Grid) isFree(r, c, h, w int) bool {
 	// Check each row of the rectangle
 	for row := range h {
@@ -32,7 +32,7 @@ func (g *Grid) isFree(r, c, h, w int) bool {
 
 // canShiftRight reports whether rectangle can shift right.
 // Checks if column c+w is free for rows [r, r+h).
-// Internal helper - no validation, assumes valid bounds.
+// Internal implementation - no validation, assumes valid bounds.
 func (g *Grid) canShiftRight(r, c, h, w int) bool {
 	targetCol := c + w
 	if targetCol >= g.cols {
@@ -43,7 +43,7 @@ func (g *Grid) canShiftRight(r, c, h, w int) bool {
 
 // canShiftLeft reports whether rectangle can shift left.
 // Checks if column c-1 is free for rows [r, r+h).
-// Internal helper - no validation, assumes valid bounds.
+// Internal implementation - no validation, assumes valid bounds.
 func (g *Grid) canShiftLeft(r, c, h, w int) bool {
 	if c == 0 {
 		return false
@@ -54,7 +54,7 @@ func (g *Grid) canShiftLeft(r, c, h, w int) bool {
 
 // canShiftUp reports whether rectangle can shift up.
 // Checks if row r-1 is free for columns [c, c+w).
-// Internal helper - no validation, assumes valid bounds.
+// Internal implementation - no validation, assumes valid bounds.
 func (g *Grid) canShiftUp(r, c, h, w int) bool {
 	if r == 0 {
 		return false
@@ -65,7 +65,7 @@ func (g *Grid) canShiftUp(r, c, h, w int) bool {
 
 // canShiftDown reports whether rectangle can shift down.
 // Checks if row r+h is free for columns [c, c+w).
-// Internal helper - no validation, assumes valid bounds.
+// Internal implementation - no validation, assumes valid bounds.
 func (g *Grid) canShiftDown(r, c, h, w int) bool {
 	targetRow := r + h
 	if targetRow >= g.Rows() {
@@ -142,9 +142,20 @@ func (g *Grid) canFitWidth(r, c, w int) bool {
 	return !g.B.anyRange(start, w)
 }
 
+// canFit reports whether a rectangle of size h×w fits at position (r, c).
+// Checks only boundary constraints, not cell occupancy.
+// Returns two booleans:
+//   - fitRow: true if r+h <= rows (height fits)
+//   - fitCol: true if c+w <= cols (width fits)
+//
+// Internal implementation - no validation.
+func (g *Grid) canFit(r, c, h, w int) (fitRow, fitCol bool) {
+	return r+h <= g.rows, c+w <= g.cols
+}
+
 // allGrid returns true if all bits in the grid are set.
 // Returns false for empty grid.
-// Internal helper - no validation.
+// Internal implementation - no validation.
 func (g *Grid) allGrid() bool {
 	// Empty grid has no bits to check
 	if g.rows == 0 || g.cols == 0 {
@@ -157,7 +168,7 @@ func (g *Grid) allGrid() bool {
 
 // allRow returns true if all bits in row r are set.
 // Returns false for empty row.
-// Internal helper - no validation.
+// Internal implementation - no validation.
 func (g *Grid) allRow(r int) bool {
 	// Empty row has no bits to check
 	if g.cols == 0 {

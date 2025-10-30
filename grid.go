@@ -217,6 +217,26 @@ func (g *Grid) CanFitWidth(r, c, w int) bool {
 	return g.canFitWidth(r, c, w)
 }
 
+// CanFit reports whether a rectangle of size h×w can fit at position (r, c) in the grid.
+// This checks only boundary constraints, not whether the cells are occupied.
+// Returns two booleans:
+//   - fitRow: true if r+h <= Rows() (height fits within grid)
+//   - fitCol: true if c+w <= Cols() (width fits within grid)
+//
+// Panics if r < 0, c < 0, h < 0, w < 0, r >= Rows(), or c >= Cols().
+func (g *Grid) CanFit(r, c, h, w int) (fitRow, fitCol bool) {
+	if err := g.validateCoordinate(r, c); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.CanFit"))
+	}
+	if err := validateNonNegative(h, "h"); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.CanFit"))
+	}
+	if err := validateNonNegative(w, "w"); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.CanFit"))
+	}
+	return g.canFit(r, c, h, w)
+}
+
 // AllGrid returns true if all bits in the grid are set.
 // Returns false for empty grid (0 rows or 0 columns).
 func (g *Grid) AllGrid() bool {
