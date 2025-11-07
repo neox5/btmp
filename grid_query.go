@@ -30,6 +30,150 @@ func (g *Grid) isFree(r, c, h, w int) bool {
 	return true
 }
 
+// nextZeroInRow returns the column index of the next zero bit in row r,
+// starting search from column c.
+// Returns -1 if no zero bit exists in [c, Cols()).
+// Internal implementation - no validation.
+func (g *Grid) nextZeroInRow(r, c int) int {
+	start := g.rowStart(r) + c
+	remaining := g.cols - c
+
+	pos := g.B.NextZeroInRange(start, remaining)
+	if pos == -1 {
+		return -1
+	}
+
+	// Convert bitmap position back to column index
+	return pos - g.rowStart(r)
+}
+
+// nextOneInRow returns the column index of the next set bit in row r,
+// starting search from column c.
+// Returns -1 if no set bit exists in [c, Cols()).
+// Internal implementation - no validation.
+func (g *Grid) nextOneInRow(r, c int) int {
+	start := g.rowStart(r) + c
+	remaining := g.cols - c
+
+	pos := g.B.NextOneInRange(start, remaining)
+	if pos == -1 {
+		return -1
+	}
+
+	// Convert bitmap position back to column index
+	return pos - g.rowStart(r)
+}
+
+// nextZeroInRowRange returns the column index of the next zero bit in row r,
+// searching within [c, c+count).
+// Returns -1 if no zero bit exists in range.
+// Internal implementation - no validation.
+func (g *Grid) nextZeroInRowRange(r, c, count int) int {
+	start := g.rowStart(r) + c
+
+	// Limit count to available columns
+	available := g.cols - c
+	searchCount := min(count, available)
+
+	if searchCount <= 0 {
+		return -1
+	}
+
+	pos := g.B.NextZeroInRange(start, searchCount)
+	if pos == -1 {
+		return -1
+	}
+
+	// Convert bitmap position back to column index
+	return pos - g.rowStart(r)
+}
+
+// nextOneInRowRange returns the column index of the next set bit in row r,
+// searching within [c, c+count).
+// Returns -1 if no set bit exists in range.
+// Internal implementation - no validation.
+func (g *Grid) nextOneInRowRange(r, c, count int) int {
+	start := g.rowStart(r) + c
+
+	// Limit count to available columns
+	available := g.cols - c
+	searchCount := min(count, available)
+
+	if searchCount <= 0 {
+		return -1
+	}
+
+	pos := g.B.NextOneInRange(start, searchCount)
+	if pos == -1 {
+		return -1
+	}
+
+	// Convert bitmap position back to column index
+	return pos - g.rowStart(r)
+}
+
+// countZerosFromInRow returns the count of consecutive zero bits in row r
+// starting at column c.
+// Returns 0 if bit at (r,c) is set.
+// Stops at first set bit or end of row.
+// Internal implementation - no validation.
+func (g *Grid) countZerosFromInRow(r, c int) int {
+	start := g.rowStart(r) + c
+	remaining := g.cols - c
+
+	return g.B.CountZerosFromInRange(start, remaining)
+}
+
+// countOnesFromInRow returns the count of consecutive set bits in row r
+// starting at column c.
+// Returns 0 if bit at (r,c) is zero.
+// Stops at first zero bit or end of row.
+// Internal implementation - no validation.
+func (g *Grid) countOnesFromInRow(r, c int) int {
+	start := g.rowStart(r) + c
+	remaining := g.cols - c
+
+	return g.B.CountOnesFromInRange(start, remaining)
+}
+
+// countZerosFromInRowRange returns the count of consecutive zero bits in row r
+// starting at column c, within [c, c+count).
+// Returns 0 if bit at (r,c) is set.
+// Stops at first set bit or end of range.
+// Internal implementation - no validation.
+func (g *Grid) countZerosFromInRowRange(r, c, count int) int {
+	start := g.rowStart(r) + c
+
+	// Limit count to available columns
+	available := g.cols - c
+	searchCount := min(count, available)
+
+	if searchCount <= 0 {
+		return 0
+	}
+
+	return g.B.CountZerosFromInRange(start, searchCount)
+}
+
+// countOnesFromInRowRange returns the count of consecutive set bits in row r
+// starting at column c, within [c, c+count).
+// Returns 0 if bit at (r,c) is zero.
+// Stops at first zero bit or end of range.
+// Internal implementation - no validation.
+func (g *Grid) countOnesFromInRowRange(r, c, count int) int {
+	start := g.rowStart(r) + c
+
+	// Limit count to available columns
+	available := g.cols - c
+	searchCount := min(count, available)
+
+	if searchCount <= 0 {
+		return 0
+	}
+
+	return g.B.CountOnesFromInRange(start, searchCount)
+}
+
 // canShiftRight reports whether rectangle can shift right.
 // Checks if column c+w is free for rows [r, r+h).
 // Internal implementation - no validation, assumes valid bounds.
@@ -72,59 +216,6 @@ func (g *Grid) canShiftDown(r, c, h, w int) bool {
 		return false
 	}
 	return g.isFree(targetRow, c, 1, w)
-}
-
-// nextFreeCol returns the column index of the next unoccupied cell in row r,
-// starting search from column c.
-// Returns -1 if no free column exists in [c, Cols()).
-// Internal implementation - no validation.
-func (g *Grid) nextFreeCol(r, c int) int {
-	start := g.rowStart(r) + c
-	remaining := g.cols - c
-
-	pos := g.B.nextZeroInRange(start, remaining)
-	if pos == -1 {
-		return -1
-	}
-
-	// Convert bitmap position back to column index
-	return pos - g.rowStart(r)
-}
-
-// nextFreeColInRange returns the column index of the next unoccupied cell in row r,
-// searching within [c, c+count).
-// Returns -1 if no free column exists in range.
-// Internal implementation - no validation.
-func (g *Grid) nextFreeColInRange(r, c, count int) int {
-	start := g.rowStart(r) + c
-
-	// Limit count to available columns
-	available := g.cols - c
-	searchCount := min(count, available)
-
-	if searchCount <= 0 {
-		return -1
-	}
-
-	pos := g.B.nextZeroInRange(start, searchCount)
-	if pos == -1 {
-		return -1
-	}
-
-	// Convert bitmap position back to column index
-	return pos - g.rowStart(r)
-}
-
-// freeColsFrom returns the count of consecutive unoccupied columns in row r
-// starting at column c.
-// Returns 0 if cell at (r,c) is occupied.
-// Stops at first occupied cell or end of row.
-// Internal implementation - no validation.
-func (g *Grid) freeColsFrom(r, c int) int {
-	start := g.rowStart(r) + c
-	remaining := g.cols - c
-
-	return g.B.countZerosFromInRange(start, remaining)
 }
 
 // canFitWidth reports whether columns [c, c+w) in row r contain only unoccupied cells.

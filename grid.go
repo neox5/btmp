@@ -126,6 +126,118 @@ func (g *Grid) IsFree(r, c, h, w int) bool {
 	return g.isFree(r, c, h, w)
 }
 
+// NextZeroInRow returns the column index of the next zero bit in row r,
+// starting search from column c.
+// Search is constrained to row r only - does not continue to next row.
+// Returns -1 if no zero bit exists in [c, Cols()).
+// Panics if r < 0, c < 0, r >= Rows(), or c >= Cols().
+func (g *Grid) NextZeroInRow(r, c int) int {
+	if err := g.validateCoordinate(r, c); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.NextZeroInRow"))
+	}
+	return g.nextZeroInRow(r, c)
+}
+
+// NextOneInRow returns the column index of the next set bit in row r,
+// starting search from column c.
+// Search is constrained to row r only - does not continue to next row.
+// Returns -1 if no set bit exists in [c, Cols()).
+// Panics if r < 0, c < 0, r >= Rows(), or c >= Cols().
+func (g *Grid) NextOneInRow(r, c int) int {
+	if err := g.validateCoordinate(r, c); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.NextOneInRow"))
+	}
+	return g.nextOneInRow(r, c)
+}
+
+// NextZeroInRowRange returns the column index of the next zero bit in row r,
+// searching within [c, c+count).
+// Search is constrained to specified range only.
+// Returns -1 if no zero bit exists in range.
+// Panics if r < 0, c < 0, count <= 0, r >= Rows(), or c >= Cols().
+func (g *Grid) NextZeroInRowRange(r, c, count int) int {
+	if err := g.validateCoordinate(r, c); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.NextZeroInRowRange"))
+	}
+	if err := validatePositive(count, "count"); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.NextZeroInRowRange"))
+	}
+	return g.nextZeroInRowRange(r, c, count)
+}
+
+// NextOneInRowRange returns the column index of the next set bit in row r,
+// searching within [c, c+count).
+// Search is constrained to specified range only.
+// Returns -1 if no set bit exists in range.
+// Panics if r < 0, c < 0, count <= 0, r >= Rows(), or c >= Cols().
+func (g *Grid) NextOneInRowRange(r, c, count int) int {
+	if err := g.validateCoordinate(r, c); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.NextOneInRowRange"))
+	}
+	if err := validatePositive(count, "count"); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.NextOneInRowRange"))
+	}
+	return g.nextOneInRowRange(r, c, count)
+}
+
+// CountZerosFromInRow returns the count of consecutive zero bits in row r
+// starting at column c.
+// Count is constrained to row r only - stops at Cols() boundary.
+// Returns 0 if bit at (r,c) is set.
+// Stops at first set bit or end of row.
+// Panics if r < 0, c < 0, r >= Rows(), or c >= Cols().
+func (g *Grid) CountZerosFromInRow(r, c int) int {
+	if err := g.validateCoordinate(r, c); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.CountZerosFromInRow"))
+	}
+	return g.countZerosFromInRow(r, c)
+}
+
+// CountOnesFromInRow returns the count of consecutive set bits in row r
+// starting at column c.
+// Count is constrained to row r only - stops at Cols() boundary.
+// Returns 0 if bit at (r,c) is zero.
+// Stops at first zero bit or end of row.
+// Panics if r < 0, c < 0, r >= Rows(), or c >= Cols().
+func (g *Grid) CountOnesFromInRow(r, c int) int {
+	if err := g.validateCoordinate(r, c); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.CountOnesFromInRow"))
+	}
+	return g.countOnesFromInRow(r, c)
+}
+
+// CountZerosFromInRowRange returns the count of consecutive zero bits in row r
+// starting at column c, within [c, c+count).
+// Count is constrained to specified range only.
+// Returns 0 if bit at (r,c) is set.
+// Stops at first set bit or end of range.
+// Panics if r < 0, c < 0, count <= 0, r >= Rows(), or c >= Cols().
+func (g *Grid) CountZerosFromInRowRange(r, c, count int) int {
+	if err := g.validateCoordinate(r, c); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.CountZerosFromInRowRange"))
+	}
+	if err := validatePositive(count, "count"); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.CountZerosFromInRowRange"))
+	}
+	return g.countZerosFromInRowRange(r, c, count)
+}
+
+// CountOnesFromInRowRange returns the count of consecutive set bits in row r
+// starting at column c, within [c, c+count).
+// Count is constrained to specified range only.
+// Returns 0 if bit at (r,c) is zero.
+// Stops at first zero bit or end of range.
+// Panics if r < 0, c < 0, count <= 0, r >= Rows(), or c >= Cols().
+func (g *Grid) CountOnesFromInRowRange(r, c, count int) int {
+	if err := g.validateCoordinate(r, c); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.CountOnesFromInRowRange"))
+	}
+	if err := validatePositive(count, "count"); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.CountOnesFromInRowRange"))
+	}
+	return g.countOnesFromInRowRange(r, c, count)
+}
+
 // CanShiftRight reports whether the rectangle can shift one column right.
 // Checks if column c+w exists and is free (all zeros) for rows [r, r+h).
 // Panics if rectangle is invalid or out of bounds.
@@ -164,43 +276,6 @@ func (g *Grid) CanShiftDown(r, c, h, w int) bool {
 		panic(err.(*ValidationError).WithContext("Grid.CanShiftDown"))
 	}
 	return g.canShiftDown(r, c, h, w)
-}
-
-// NextFreeCol returns the column index of the next unoccupied cell in row r,
-// starting search from column c.
-// Returns -1 if no free column exists in [c, Cols()).
-// Panics if r < 0, c < 0, r >= Rows(), or c >= Cols().
-func (g *Grid) NextFreeCol(r, c int) int {
-	if err := g.validateCoordinate(r, c); err != nil {
-		panic(err.(*ValidationError).WithContext("Grid.NextFreeCol"))
-	}
-	return g.nextFreeCol(r, c)
-}
-
-// NextFreeColInRange returns the column index of the next unoccupied cell in row r,
-// searching within [c, c+count).
-// Returns -1 if no free column exists in range.
-// Panics if r < 0, c < 0, count <= 0, r >= Rows(), or c >= Cols().
-func (g *Grid) NextFreeColInRange(r, c, count int) int {
-	if err := g.validateCoordinate(r, c); err != nil {
-		panic(err.(*ValidationError).WithContext("Grid.NextFreeColInRange"))
-	}
-	if err := validatePositive(count, "count"); err != nil {
-		panic(err.(*ValidationError).WithContext("Grid.NextFreeColInRange"))
-	}
-	return g.nextFreeColInRange(r, c, count)
-}
-
-// FreeColsFrom returns the count of consecutive unoccupied columns in row r
-// starting at column c.
-// Returns 0 if cell at (r,c) is occupied.
-// Stops at first occupied cell or end of row.
-// Panics if r < 0, c < 0, r >= Rows(), or c >= Cols().
-func (g *Grid) FreeColsFrom(r, c int) int {
-	if err := g.validateCoordinate(r, c); err != nil {
-		panic(err.(*ValidationError).WithContext("Grid.FreeColsFrom"))
-	}
-	return g.freeColsFrom(r, c)
 }
 
 // CanFitWidth reports whether a cell with width w can fit in row r starting at
