@@ -117,13 +117,22 @@ func (g *Grid) GrowRows(delta int) *Grid {
 // Query Operations
 // ========================================
 
-// IsFree reports whether the specified rectangle contains only zeros.
+// RectZero reports whether the specified rectangle contains only zeros.
 // Panics if rectangle is invalid or out of bounds.
-func (g *Grid) IsFree(r, c, h, w int) bool {
+func (g *Grid) RectZero(r, c, h, w int) bool {
 	if err := g.validateRect(r, c, h, w); err != nil {
-		panic(err.(*ValidationError).WithContext("Grid.IsFree"))
+		panic(err.(*ValidationError).WithContext("Grid.RectZero"))
 	}
-	return g.isFree(r, c, h, w)
+	return g.rectZero(r, c, h, w)
+}
+
+// RectOne reports whether the specified rectangle contains only ones.
+// Panics if rectangle is invalid or out of bounds.
+func (g *Grid) RectOne(r, c, h, w int) bool {
+	if err := g.validateRect(r, c, h, w); err != nil {
+		panic(err.(*ValidationError).WithContext("Grid.RectOne"))
+	}
+	return g.rectOne(r, c, h, w)
 }
 
 // NextZeroInRow returns the column index of the next zero bit in row r,
@@ -238,86 +247,6 @@ func (g *Grid) CountOnesFromInRowRange(r, c, count int) int {
 	return g.countOnesFromInRowRange(r, c, count)
 }
 
-// CanShiftRight reports whether the rectangle can shift one column right.
-// Checks if column c+w exists and is free (all zeros) for rows [r, r+h).
-// Panics if rectangle is invalid or out of bounds.
-func (g *Grid) CanShiftRight(r, c, h, w int) bool {
-	if err := g.validateRect(r, c, h, w); err != nil {
-		panic(err.(*ValidationError).WithContext("Grid.CanShiftRight"))
-	}
-	return g.canShiftRight(r, c, h, w)
-}
-
-// CanShiftLeft reports whether the rectangle can shift one column left.
-// Checks if column c-1 exists and is free (all zeros) for rows [r, r+h).
-// Panics if rectangle is invalid or out of bounds.
-func (g *Grid) CanShiftLeft(r, c, h, w int) bool {
-	if err := g.validateRect(r, c, h, w); err != nil {
-		panic(err.(*ValidationError).WithContext("Grid.CanShiftLeft"))
-	}
-	return g.canShiftLeft(r, c, h, w)
-}
-
-// CanShiftUp reports whether the rectangle can shift one row up.
-// Checks if row r-1 exists and is free (all zeros) for columns [c, c+w).
-// Panics if rectangle is invalid or out of bounds.
-func (g *Grid) CanShiftUp(r, c, h, w int) bool {
-	if err := g.validateRect(r, c, h, w); err != nil {
-		panic(err.(*ValidationError).WithContext("Grid.CanShiftUp"))
-	}
-	return g.canShiftUp(r, c, h, w)
-}
-
-// CanShiftDown reports whether the rectangle can shift one row down.
-// Checks if row r+h exists and is free (all zeros) for columns [c, c+w).
-// Panics if rectangle is invalid or out of bounds.
-func (g *Grid) CanShiftDown(r, c, h, w int) bool {
-	if err := g.validateRect(r, c, h, w); err != nil {
-		panic(err.(*ValidationError).WithContext("Grid.CanShiftDown"))
-	}
-	return g.canShiftDown(r, c, h, w)
-}
-
-// CanFitWidth reports whether a cell with width w can fit in row r starting at
-// column c (i.e., whether columns [c, c+w) contain only unoccupied cells).
-// Returns false if any cell in the range is occupied or if c+w exceeds Cols().
-// Panics if r < 0, c < 0, w <= 0, r >= Rows(), or c >= Cols().
-func (g *Grid) CanFitWidth(r, c, w int) bool {
-	if err := g.validateCoordinate(r, c); err != nil {
-		panic(err.(*ValidationError).WithContext("Grid.CanFitWidth"))
-	}
-	if err := validatePositive(w, "w"); err != nil {
-		panic(err.(*ValidationError).WithContext("Grid.CanFitWidth"))
-	}
-	return g.canFitWidth(r, c, w)
-}
-
-// CanFit reports whether a rectangle of size h×w can fit at position (r, c) in the grid.
-// This checks only boundary constraints, not whether the cells are occupied.
-// Returns two booleans:
-//   - fitRow: true if r+h <= Rows() (height fits within grid)
-//   - fitCol: true if c+w <= Cols() (width fits within grid)
-//
-// Panics if r < 0, c < 0, h < 0, w < 0, r >= Rows(), or c >= Cols().
-func (g *Grid) CanFit(r, c, h, w int) (fitRow, fitCol bool) {
-	if err := g.validateCoordinate(r, c); err != nil {
-		panic(err.(*ValidationError).WithContext("Grid.CanFit"))
-	}
-	if err := validateNonNegative(h, "h"); err != nil {
-		panic(err.(*ValidationError).WithContext("Grid.CanFit"))
-	}
-	if err := validateNonNegative(w, "w"); err != nil {
-		panic(err.(*ValidationError).WithContext("Grid.CanFit"))
-	}
-	return g.canFit(r, c, h, w)
-}
-
-// AllGrid returns true if all bits in the grid are set.
-// Returns false for empty grid (0 rows or 0 columns).
-func (g *Grid) AllGrid() bool {
-	return g.allGrid()
-}
-
 // AllRow returns true if all bits in row r are set.
 // Returns false for empty row (Cols() == 0).
 // Panics if r < 0 or r >= Rows().
@@ -388,7 +317,7 @@ func (g *Grid) ShiftRectRight(r, c, h, w int) *Grid {
 	if err := g.validateRect(r, c, h, w); err != nil {
 		panic(err.(*ValidationError).WithContext("Grid.ShiftRectRight"))
 	}
-	if !g.canShiftRight(r, c, h, w) {
+	if !g.rectZero(r, c+w, h, 1) {
 		panic(&ValidationError{
 			Field:   "shift",
 			Value:   "right",
@@ -409,7 +338,7 @@ func (g *Grid) ShiftRectLeft(r, c, h, w int) *Grid {
 	if err := g.validateRect(r, c, h, w); err != nil {
 		panic(err.(*ValidationError).WithContext("Grid.ShiftRectLeft"))
 	}
-	if !g.canShiftLeft(r, c, h, w) {
+	if !g.rectZero(r, c-1, h, 1) {
 		panic(&ValidationError{
 			Field:   "shift",
 			Value:   "left",
@@ -430,7 +359,7 @@ func (g *Grid) ShiftRectUp(r, c, h, w int) *Grid {
 	if err := g.validateRect(r, c, h, w); err != nil {
 		panic(err.(*ValidationError).WithContext("Grid.ShiftRectUp"))
 	}
-	if !g.canShiftUp(r, c, h, w) {
+	if !g.rectZero(r-1, c, 1, w) {
 		panic(&ValidationError{
 			Field:   "shift",
 			Value:   "up",
@@ -451,7 +380,7 @@ func (g *Grid) ShiftRectDown(r, c, h, w int) *Grid {
 	if err := g.validateRect(r, c, h, w); err != nil {
 		panic(err.(*ValidationError).WithContext("Grid.ShiftRectDown"))
 	}
-	if !g.canShiftDown(r, c, h, w) {
+	if !g.rectZero(r+h, c, 1, w) {
 		panic(&ValidationError{
 			Field:   "shift",
 			Value:   "down",
